@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Daily Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f7a52">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#f3f6f4;--surface:#ffffff;--ink:#14231c;--muted:#5b6b63;--line:#d5dfd9;--accent:#1f7a52;--accent-ink:#ffffff;--bar:#dfe8e3;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#0f1713;--surface:#18241e;--ink:#e8f0ec;--muted:#93a69b;--line:#2b3a32;--accent:#3fbf86;--accent-ink:#06130d;--bar:#243329;color-scheme:dark;}
+}
+:root[data-theme="dark"]{--bg:#0f1713;--surface:#18241e;--ink:#e8f0ec;--muted:#93a69b;--line:#2b3a32;--accent:#3fbf86;--accent-ink:#06130d;--bar:#243329;color-scheme:dark;}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Avenir Next","Segoe UI",system-ui,sans-serif;line-height:1.4;-webkit-tap-highlight-color:transparent}
+main{max-width:520px;margin:0 auto;padding:16px 16px 48px}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.nav{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.nav .title{flex:1;text-align:center}
+.title h1{font-size:1.3rem;margin:0;letter-spacing:-.01em}
+.title p{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.arrow{width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:1.4rem;cursor:pointer}
+.arrow:disabled{opacity:.35;cursor:default}
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:12px}
+.chip{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0 6px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;min-height:64px}
+.chip:disabled{opacity:.35;cursor:default}
+.chip .wd{font-size:.75rem;color:var(--muted)}
+.chip .dn{font-weight:600}
+.chip .mini{width:70%;height:5px;border-radius:3px;background:var(--bar);overflow:hidden}
+.chip .mini i{display:block;height:100%;background:var(--accent)}
+.chip[aria-current="true"]{border:2px solid var(--accent)}
+.todaybtn{display:block;margin:0 auto 14px;background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer;color:var(--muted)}
+.score{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:6px}
+.score b{font-size:1.5rem}
+.bar{height:10px;background:var(--bar);border-radius:6px;margin-top:10px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--accent);transition:width .25s}
+.msg{color:var(--muted);margin:8px 0 0;font-size:.95rem}
+h2{font-size:1.05rem;margin:22px 0 10px}
+.item{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:8px;font-size:1rem;cursor:pointer;min-height:56px}
+.box{flex:0 0 26px;height:26px;border:2px solid var(--muted);border-radius:7px;display:grid;place-items:center;color:transparent;font-weight:700}
+.item[aria-pressed="true"]{border-color:var(--accent)}
+.item[aria-pressed="true"] .box{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.item[aria-pressed="true"] .label{color:var(--muted);text-decoration:line-through}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 6px;text-align:center}
+.stat b{display:block;font-size:1.4rem}
+.stat span{color:var(--muted);font-size:.78rem}
+textarea{width:100%;min-height:150px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;resize:vertical}
+textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.jcard,.tcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.thead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.del{background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--muted);cursor:pointer}
+.fld{display:block;margin-bottom:10px}
+.fld>span{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.fld input{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit}
+.fld input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;min-height:44px;background:var(--bg);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.seg button[aria-pressed='true']{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.addbtn{width:100%;min-height:52px;background:transparent;border:2px dashed var(--line);border-radius:12px;cursor:pointer;margin-bottom:12px}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:6px;cursor:pointer;min-height:48px}
+.dayrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.big{font-size:1.3rem;font-weight:600}
+.pos{color:var(--accent)}
+.neg{color:#b3261e}
+@media (prefers-color-scheme:dark){:root:not([data-theme='light']) .neg{color:#ff8a80}}
+:root[data-theme='dark'] .neg{color:#ff8a80}
+.water{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.wrow{display:flex;align-items:center;gap:12px}
+.wbtn{width:52px;height:52px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:1.5rem;cursor:pointer}
+.wbtn.add{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.wmid{flex:1;text-align:center}
+.wmid b{font-size:1.6rem}
+.wcups{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
+.wcups i{width:18px;height:22px;border:2px solid var(--accent);border-radius:0 0 5px 5px;border-top:none}
+.wcups i.on{background:var(--accent)}
+.wgoal{display:flex;align-items:center;justify-content:space-between;margin-top:12px;color:var(--muted);font-size:.9rem}
+.wgoal button{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--bg);cursor:pointer}
+.rw{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
+.rw.open{border-color:var(--accent)}
+.rwhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:.9rem}
+.rwhead b{font-size:1rem}
+.rwtag{font-size:.8rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.rw.open .rwtag{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.rw input{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit}
+.rwbtns{display:flex;gap:8px;margin-top:8px}
+.rwbtns button{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer}
+.rwbtns button[aria-pressed='true']{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.foot{margin-top:26px;text-align:center}
+.foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
+.tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
+.lvl{background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.lvltop{display:flex;align-items:center;gap:14px}
+.badge{flex:0 0 56px;height:56px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:1.5rem;font-weight:700}
+.lvlname{font-weight:600;font-size:1.1rem}
+.lvlsub{color:var(--muted);font-size:.85rem}
+.lvl .bar{margin-top:12px}
+.lvl details{margin-top:10px;color:var(--muted);font-size:.88rem}
+.lvl summary{cursor:pointer;padding:6px 0}
+.lvl ul{margin:6px 0 0;padding-left:18px}
+.lvlup{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:600;display:none}
+</style>
+</head>
+<body>
+<main>
+  <div class="nav">
+    <button class="arrow" id="prev" type="button" aria-label="Previous day">‹</button>
+    <div class="title"><h1 id="dayTitle"></h1><p id="daySub"></p></div>
+    <button class="arrow" id="next" type="button" aria-label="Next day">›</button>
+  </div>
+
+  <div class="strip" id="strip"></div>
+  <button class="todaybtn" id="todayBtn" type="button">Jump to today</button>
+
+  <section class="score" aria-live="polite">
+    <div><b id="count">0</b> of 6 done</div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <p class="msg" id="msg"></p>
+  </section>
+
+  <section class="lvl" aria-label="Your level">
+    <div class="lvltop">
+      <div class="badge" id="lvlNum">1</div>
+      <div><div class="lvlname" id="lvlName">Starter</div><div class="lvlsub" id="lvlSub">0 XP</div></div>
+    </div>
+    <div class="bar"><div class="fill" id="lvlFill"></div></div>
+    <p class="msg" id="lvlNext"></p>
+    <p class="lvlup" id="lvlUp" role="status"></p>
+    <details><summary>How you earn XP</summary><ul>
+      <li>10 XP for each daily box, plus 20 for a perfect 6 of 6 day</li>
+      <li>15 XP for hitting your water goal</li>
+      <li>15 XP for each trade where you followed your plan</li>
+      <li>10 XP for filling in did well, mistake, and tomorrow’s adjustment</li>
+      <li>15 XP for each weekly review box</li>
+      <li>50 XP for every 7 days in a row with 4 or more boxes</li>
+      <li>150 to 200 XP for each yearly goal checkpoint</li>
+    </ul><p style="margin:8px 0 0">XP rewards your process, never your profit or loss, so a red day where you followed your rules still levels you up.</p></details>
+  </section>
+
+  <section class="stats" aria-label="Streak and weekly summary">
+    <div class="stat"><b id="streak">0</b><span>day streak (4+ boxes)</span></div>
+    <div class="stat"><b id="wkAvg">0.0</b><span>week avg per day</span></div>
+    <div class="stat"><b id="prevAvg">0.0</b><span>prior week avg</span></div>
+  </section>
+  <p class="msg">Boxes this week: <span id="wkTotal">0 of 0</span></p>
+
+  <h2>Daily</h2>
+  <div id="daily"></div>
+
+  <h2>Water</h2>
+  <section class="water" aria-label="Water tracker">
+    <div class="wrow">
+      <button class="wbtn" id="wMinus" type="button" aria-label="Remove a glass">−</button>
+      <div class="wmid" aria-live="polite"><b id="wCount">0</b> <span id="wOf">of 8 glasses</span></div>
+      <button class="wbtn add" id="wPlus" type="button" aria-label="Add a glass">+</button>
+    </div>
+    <div class="wcups" id="wCups" aria-hidden="true"></div>
+    <p class="msg" id="wMsg"></p>
+    <div class="wgoal"><span>Daily goal, glasses of 8 oz</span><span><button type="button" id="wGoalMinus" aria-label="Lower goal">−</button> <b id="wGoal">8</b> <button type="button" id="wGoalPlus" aria-label="Raise goal">+</button></span></div>
+  </section>
+
+  <h2 id="weekTitle">Weekly review</h2>
+  <div id="weekly"></div>
+
+  <h2 id='journalTop'>Trade journal</h2>
+  <p class='msg' id='jDateLine'></p>
+  <section class='stats' aria-label='Journal summary'>
+    <div class='stat'><b id='jWeek'>$0</b><span>this week</span></div>
+    <div class='stat'><b id='jAll'>$0</b><span>all logged trades</span></div>
+    <div class='stat'><b id='jPlan'>None yet</b><span>followed plan</span></div>
+  </section>
+  <div id='jAccts' style='margin-top:10px'></div>
+  <div class='jcard' style='margin-top:10px'>
+    <button type='button' class='item' id='noTradeBtn' aria-pressed='false' style='margin:0'><span class='box' aria-hidden='true'>✓</span><span class='label'>No trade day</span></button>
+    <div class='fld' id='ntReasonWrap' style='margin:10px 0 0'><span>Reason</span><input id='ntReason' placeholder='Weekend, holiday, news day, or sat out on purpose'></div>
+    <p class='msg' id='ntMsg' aria-live='polite'></p>
+  </div>
+  <div class='jcard'><div class='fld'><span>Mood before</span><input id='jMb' placeholder='excited'></div></div>
+  <div id='jTrades'></div>
+  <button class='addbtn' id='addTrade' type='button'>Add trade</button>
+  <div class='jcard'>
+    <div class='dayrow' id='jDayRow'><span>Day total</span><b class='big' id='jDayTotal'>$0</b></div>
+    <div class='fld'><span>Mood after</span><input id='jMa'></div>
+    <div class='fld'><span>Did well</span><input id='jWell'></div>
+    <div class='fld'><span>Mistake</span><input id='jMis'></div>
+    <div class='fld'><span>Tomorrow’s adjustment</span><input id='jTom'></div>
+  </div>
+  <h2>Journal history</h2>
+  <div id='jHist'></div>
+  <datalist id='atms'><option value='High ATR'><option value='Normal ATR'><option value='Low ATR'></datalist>
+  <datalist id='accts'><option value='Midgard 50K'><option value='Tradeify'><option value='Apex'><option value='FFF Velocity'><option value='FFF Prime'><option value='Halcyon'></datalist>
+
+  <h2>Yearly goals</h2>
+  <p class="msg">Weight checkpoints</p>
+  <div id="goalsWeight"></div>
+  <p class="msg">Trading and the move</p>
+  <div id="goalsTrade"></div>
+
+  <h2>Rewards</h2>
+  <p class="msg" style="margin-top:0">Payout rewards</p>
+  <div id="rwPay"></div>
+  <p class="msg">Level rewards (tap a reward to change it)</p>
+  <div id="rwLevels"></div>
+
+  <h2>Payout rules by account</h2>
+  <textarea id="rules" placeholder="List each account and its payout rules: profit target, minimum trading days, consistency rule, and how drawdown is measured."></textarea>
+
+  <h2>Backup</h2>
+  <p class="msg" style="margin-top:0">Save a copy of all your history, or restore it on another device.</p>
+  <div class="rwbtns"><button id="bkDownload" type="button">Download backup file</button><button id="bkUpload" type="button">Restore from file</button></div>
+  <input type="file" id="bkFile" accept=".json,application/json" hidden>
+  <div class="rwbtns"><button id="bkShow" type="button">Show backup code</button><button id="bkRestore" type="button">Restore from pasted code</button></div>
+  <textarea id="bkText" style="min-height:110px;margin-top:8px" placeholder="Paste backup code here, then tap Restore from pasted code" aria-label="Backup code"></textarea>
+  <p class="msg" id="bkMsg" aria-live="polite"></p>
+
+  <div class="foot"><button id="clearDay" type="button">Clear this day</button></div>
+  <p class="tip" id="syncStatus" aria-live="polite"></p>
+  <p class="tip">Your history is saved on this phone. Download a backup now and then so you never lose it.</p>
+</main>
+
+<script>
+var DAILY=[
+  ["walk","Walked 15 to 20 minutes"],
+  ["protein","Protein at every meal"],
+  ["swap","Kept my food swap (no sugary drinks)"],
+  ["bed","In bed at my set bedtime"],
+  ["plan","Wrote my trading plan and risk limit before trading"],
+  ["log","Logged my trades and whether I followed the plan"]
+];
+var WEEKLY=[
+  ["w-count","Counted how many boxes I hit this week"],
+  ["w-tighten","Picked one thing to tighten for next week"],
+  ["w-doctor","Doctor appointment booked (Week 1 only)"],
+  ["w-strength","Two strength sessions done (starting Week 4)"]
+];
+var WD=["S","M","T","W","T","F","S"];
+var KEY="tracker-v2";
+var state={days:{},weeks:{},goals:{},notes:"",journal:{}};
+var view="";
+
+function pad(n){return n<10?"0"+n:""+n;}
+function iso(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function parse(s){var p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2]);}
+function addDays(s,n){var d=parse(s);d.setDate(d.getDate()+n);return iso(d);}
+function weekStart(s){var d=parse(s);d.setDate(d.getDate()-d.getDay());return iso(d);}
+function today(){return iso(new Date());}
+function isNoTrade(s){var j=state.journal[s];return !!(j&&j.noTrade);}
+var TRADE_ITEMS={plan:1,log:1};
+function countFor(s){var o=state.days[s]||{},nt=isNoTrade(s);return DAILY.filter(function(x){return o[x[0]]||(nt&&TRADE_ITEMS[x[0]]);}).length;}
+
+function load(){
+  try{
+    var raw=localStorage.getItem(KEY);
+    if(raw){var s=JSON.parse(raw);if(s&&s.days){state.days=s.days;state.weeks=s.weeks||{};state.goals=s.goals||{};state.notes=s.notes||"";state.journal=s.journal||{};}}
+    else{
+      var old=localStorage.getItem("tracker-v1");
+      if(old){
+        var o=JSON.parse(old);
+        if(o&&o.day){var p=o.day.split("-");var k=p[0]+"-"+pad(+p[1])+"-"+pad(+p[2]);state.days[k]=o.daily||{};}
+        if(o&&o.week){var q=o.week.split("-");var wk=q[0]+"-"+pad(+q[1])+"-"+pad(+q[2]);state.weeks[wk]=o.weekly||{};}
+      }
+    }
+  }catch(e){}
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}scheduleSync();}
+
+function makeItem(id,text,store){
+  var b=document.createElement("button");
+  b.type="button";b.className="item";
+  b.setAttribute("aria-pressed",store[id]?"true":"false");
+  b.innerHTML='<span class="box" aria-hidden="true">✓</span><span class="label"></span>';
+  b.querySelector(".label").textContent=text;
+  b.addEventListener("click",function(){
+    store[id]=!store[id];
+    b.setAttribute("aria-pressed",store[id]?"true":"false");
+    save();updateScore();renderStrip();
+  });
+  return b;
+}
+
+function render(){
+  var t=today();
+  var d=parse(view);
+  document.getElementById("dayTitle").textContent=view===t?"Today":d.toLocaleDateString(undefined,{weekday:"long"});
+  document.getElementById("daySub").textContent=d.toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"});
+  document.getElementById("next").disabled=view>=t;
+  document.getElementById("todayBtn").style.display=view===t?"none":"block";
+
+  if(!state.days[view])state.days[view]={};
+  var ws=weekStart(view);
+  if(!state.weeks[ws])state.weeks[ws]={};
+
+  var dEl=document.getElementById("daily"),wEl=document.getElementById("weekly");
+  dEl.innerHTML="";wEl.innerHTML="";
+  DAILY.forEach(function(x){
+    if(isNoTrade(view)&&TRADE_ITEMS[x[0]]){
+      var b=makeItem(x[0],x[1]+' (no trade day)',{plan:true,log:true});
+      b.disabled=true;b.style.cursor='default';b.setAttribute('aria-disabled','true');
+      dEl.appendChild(b);
+    }else dEl.appendChild(makeItem(x[0],x[1],state.days[view]));
+  });
+  WEEKLY.forEach(function(x){wEl.appendChild(makeItem(x[0],x[1],state.weeks[ws]));});
+  document.getElementById("weekTitle").textContent="Weekly review, week of "+parse(ws).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();
+}
+
+function jEntry(){var e=state.journal[view];if(!e){e={trades:[],mb:'',ma:'',well:'',mis:'',tom:''};state.journal[view]=e;}return e;}
+function tradePnl(t){var a=parseFloat(t.amt);if(isNaN(a))return 0;return (t.res==='win'?1:-1)*Math.abs(a);}
+function dayPnl(s){var e=state.journal[s];if(!e)return 0;return e.trades.reduce(function(n,t){return n+tradePnl(t);},0);}
+function money(n){var r=Math.round(n);return (r<0?'−':r>0?'+':'')+'$'+Math.abs(r).toLocaleString();}
+function pnlClass(n){return n<0?'neg':n>0?'pos':'';}
+function seg(opts,cur,pick){
+  var w=document.createElement('div');w.className='seg';
+  opts.forEach(function(o){
+    var b=document.createElement('button');b.type='button';b.textContent=o[1];
+    b.setAttribute('aria-pressed',cur===o[0]?'true':'false');
+    b.addEventListener('click',function(){
+      cur=o[0];
+      Array.prototype.forEach.call(w.children,function(c,i){c.setAttribute('aria-pressed',opts[i][0]===cur?'true':'false');});
+      pick(o[0]);
+    });
+    w.appendChild(b);
+  });
+  return w;
+}
+function field(label,el){var d=document.createElement('div');d.className='fld';var s=document.createElement('span');s.textContent=label;d.appendChild(s);d.appendChild(el);return d;}
+function inp(val,ph,type,mode,onc,list){
+  var i=document.createElement('input');i.type=type||'text';
+  if(mode)i.setAttribute('inputmode',mode);
+  if(list)i.setAttribute('list',list);
+  i.placeholder=ph||'';i.value=val||'';
+  i.addEventListener('input',function(){onc(i.value);});
+  return i;
+}
+function renderJournal(){
+  var e=jEntry(),box=document.getElementById('jTrades');box.innerHTML='';
+  document.getElementById('jDateLine').textContent='Journal for '+parse(view).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  e.trades.forEach(function(t,idx){
+    var c=document.createElement('div');c.className='tcard';
+    var h=document.createElement('div');h.className='thead';
+    h.innerHTML='<b></b><button type="button" class="del">Delete</button>';
+    h.querySelector('b').textContent='Trade '+(idx+1);
+    h.querySelector('.del').addEventListener('click',function(){e.trades.splice(idx,1);save();renderJournal();});
+    c.appendChild(h);
+    c.appendChild(field('Account',inp(t.acct,'Midgard 50K','text','',function(v){t.acct=v;save();jTotals();},'accts')));
+    c.appendChild(field('Direction',seg([['long','Long'],['short','Short']],t.dir,function(v){t.dir=v;save();})));
+    c.appendChild(field('Entry time',inp(t.time,'','time','',function(v){t.time=v;save();})));
+    c.appendChild(field('Entry price',inp(t.entry,'29857.50','text','decimal',function(v){t.entry=v;save();})));
+    c.appendChild(field('Exit or stop price',inp(t.exit,'29842.50','text','decimal',function(v){t.exit=v;save();})));
+    c.appendChild(field('ATM',inp(t.atm,'High ATR','text','',function(v){t.atm=v;save();},'atms')));
+    c.appendChild(field('Ended by',seg([['stop','Stop'],['target','Target'],['manual','Manual']],t.how,function(v){t.how=v;save();})));
+    c.appendChild(field('Result',seg([['loss','Loss'],['win','Win']],t.res,function(v){t.res=v;save();jTotals();})));
+    c.appendChild(field('Amount in dollars',inp(t.amt,'180','text','decimal',function(v){t.amt=v;save();jTotals();})));
+    c.appendChild(field('Setup and reason',inp(t.setup,'','text','',function(v){t.setup=v;save();})));
+    c.appendChild(field('Followed plan',seg([['yes','Yes'],['no','No']],t.plan,function(v){t.plan=v;save();jTotals();})));
+    c.appendChild(field('Price 15 to 30 min after exit',inp(t.after,'','text','',function(v){t.after=v;save();})));
+    box.appendChild(c);
+  });
+  var nt=!!e.noTrade;
+  var ntb=document.getElementById('noTradeBtn');ntb.setAttribute('aria-pressed',nt?'true':'false');
+  ntb.onclick=function(){
+    if(!e.noTrade&&e.trades.length){document.getElementById('ntMsg').textContent='This day has trades logged. Delete them first to mark it as a no trade day.';return;}
+    e.noTrade=!e.noTrade;document.getElementById('ntMsg').textContent='';save();render();
+  };
+  document.getElementById('ntReasonWrap').style.display=nt?'block':'none';
+  var ntr=document.getElementById('ntReason');ntr.value=e.ntReason||'';ntr.oninput=function(){e.ntReason=ntr.value;save();};
+  box.style.display=nt?'none':'block';
+  document.getElementById('addTrade').style.display=nt?'none':'block';
+  document.getElementById('jDayRow').style.display=nt?'none':'flex';
+  [['jMb','mb'],['jMa','ma'],['jWell','well'],['jMis','mis'],['jTom','tom']].forEach(function(p){
+    var el=document.getElementById(p[0]);el.value=e[p[1]]||'';
+    el.oninput=function(){e[p[1]]=el.value;save();renderLevel();};
+  });
+  jTotals();
+}
+function jTotals(){
+  renderLevel();
+  var d=dayPnl(view),el=document.getElementById('jDayTotal');
+  el.textContent=money(d);el.className='big '+pnlClass(d);
+  var ws=weekStart(view),wk=0,i;
+  for(i=0;i<7;i++){wk+=dayPnl(addDays(ws,i));}
+  var all=0,yes=0,no=0;
+  Object.keys(state.journal).forEach(function(k){state.journal[k].trades.forEach(function(t){all+=tradePnl(t);if(t.plan==='yes')yes++;if(t.plan==='no')no++;});});
+  var a=document.getElementById('jWeek');a.textContent=money(wk);a.className=pnlClass(wk);
+  var b=document.getElementById('jAll');b.textContent=money(all);b.className=pnlClass(all);
+  document.getElementById('jPlan').textContent=(yes+no)?Math.round(yes/(yes+no)*100)+'%':'None yet';
+  var acc={},wsA=weekStart(view),weA=addDays(wsA,6);
+  Object.keys(state.journal).forEach(function(k){state.journal[k].trades.forEach(function(t){var n=(t.acct||'').trim()||'No account set';if(!acc[n])acc[n]={wk:0,all:0,c:0};acc[n].all+=tradePnl(t);acc[n].c++;if(k>=wsA&&k<=weA)acc[n].wk+=tradePnl(t);});});
+  var ab=document.getElementById('jAccts');ab.innerHTML='';
+  var names=Object.keys(acc).sort();
+  if(names.length){
+    var hd=document.createElement('p');hd.className='msg';hd.style.margin='0 0 6px';hd.textContent='By account (this week, all time)';ab.appendChild(hd);
+    names.forEach(function(n){var r=document.createElement('div');r.className='hrow';r.style.cursor='default';r.innerHTML='<span></span><span><b></b> <b></b></span>';r.firstChild.textContent=n+', '+acc[n].c+(acc[n].c===1?' trade':' trades');var bs=r.querySelectorAll('b');bs[0].textContent=money(acc[n].wk);bs[0].className=pnlClass(acc[n].wk);bs[1].textContent='/ '+money(acc[n].all);bs[1].className=pnlClass(acc[n].all);ab.appendChild(r);});
+  }
+  var h=document.getElementById('jHist');h.innerHTML='';
+  var keys=Object.keys(state.journal).filter(function(k){return state.journal[k].trades.length>0||state.journal[k].noTrade;}).sort().reverse().slice(0,14);
+  if(!keys.length){var p=document.createElement('p');p.className='msg';p.textContent='Logged days will show up here.';h.appendChild(p);return;}
+  keys.forEach(function(k){
+    var r=document.createElement('button');r.type='button';r.className='hrow';
+    var n=state.journal[k].trades.length,pl=dayPnl(k),ntd=!!state.journal[k].noTrade;
+    r.innerHTML='<span></span><b></b>';
+    r.firstChild.textContent=parse(k).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})+(ntd?', no trade day':', '+n+(n===1?' trade':' trades'));
+    r.lastChild.textContent=ntd?'No trade':money(pl);r.lastChild.className=ntd?'':pnlClass(pl);
+    r.addEventListener('click',function(){view=k;render();document.getElementById('journalTop').scrollIntoView();});
+    h.appendChild(r);
+  });
+}
+document.getElementById('addTrade').addEventListener('click',function(){
+  var e=jEntry();
+  var lastAcct='';Object.keys(state.journal).sort().forEach(function(k){state.journal[k].trades.forEach(function(t){if(t.acct)lastAcct=t.acct;});});
+  e.trades.push({acct:lastAcct,dir:'',time:'',entry:'',exit:'',atm:'',how:'stop',res:'loss',amt:'',setup:'',plan:'',after:''});
+  save();renderJournal();
+});
+var GOALS_W=[
+  ["g-w1","Down about 12 pounds by Jan 20"],
+  ["g-w2","Down about 25 pounds by Apr 20"],
+  ["g-w3","Down about 38 pounds by Jul 20"],
+  ["g-w4","Down 50 pounds by Oct 20"]
+];
+var GOALS_T=[
+  ["g-t1","Wrote down my Midgard 50K payout rules"],
+  ["g-t2","Built my buffer with rule following days"],
+  ["g-t3","Met the trading day and consistency requirements"],
+  ["g-t4","Requested my first payout (target: February)"],
+  ["g-t5","Added accounts gradually after the first payout"],
+  ["g-t6","Getting payouts most months"],
+  ["g-t7","Three months in a row at 10K, plus a cash cushion for the move"]
+];
+function renderGoals(){
+  var a=document.getElementById("goalsWeight"),b=document.getElementById("goalsTrade");
+  a.innerHTML="";b.innerHTML="";
+  GOALS_W.forEach(function(x){a.appendChild(makeItem(x[0],x[1],state.goals));});
+  GOALS_T.forEach(function(x){b.appendChild(makeItem(x[0],x[1],state.goals));});
+  var ta=document.getElementById("rules");
+  ta.value=state.notes||"";
+  ta.oninput=function(){state.notes=ta.value;save();};
+}
+function waterGoal(){var g=state.goals&&state.goals.waterGoal;return (typeof g==='number'&&g>0)?g:8;}
+function renderWater(){
+  var day=state.days[view]||(state.days[view]={});
+  var n=day.water||0,g=waterGoal();
+  document.getElementById('wCount').textContent=n;
+  document.getElementById('wOf').textContent='of '+g+' glasses ('+(n*8)+' oz)';
+  document.getElementById('wGoal').textContent=g;
+  var c=document.getElementById('wCups');c.innerHTML='';
+  for(var i=0;i<Math.max(n,g);i++){var e=document.createElement('i');if(i<n)e.className='on';c.appendChild(e);}
+  document.getElementById('wMsg').textContent=n>=g?'Goal reached for this day.':(g-n)+' to go.';
+}
+function setWater(delta){var day=state.days[view]||(state.days[view]={});day.water=Math.max(0,Math.min(40,(day.water||0)+delta));if(!day.water)delete day.water;save();renderWater();renderLevel();}
+function setWaterGoal(delta){state.goals.waterGoal=Math.max(1,Math.min(30,waterGoal()+delta));save();renderWater();renderLevel();}
+document.getElementById('wPlus').addEventListener('click',function(){setWater(1);});
+document.getElementById('wMinus').addEventListener('click',function(){setWater(-1);});
+document.getElementById('wGoalPlus').addEventListener('click',function(){setWaterGoal(1);});
+document.getElementById('wGoalMinus').addEventListener('click',function(){setWaterGoal(-1);});
+function renderStrip(){
+  var st=document.getElementById("strip");st.innerHTML="";
+  var ws=weekStart(view),t=today();
+  for(var i=0;i<7;i++){
+    (function(s){
+      var b=document.createElement("button");
+      b.type="button";b.className="chip";
+      var n=countFor(s);
+      b.setAttribute("aria-label",parse(s).toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})+", "+n+" of 6 done");
+      if(s===view)b.setAttribute("aria-current","true");
+      if(s>t)b.disabled=true;
+      b.innerHTML='<span class="wd">'+WD[parse(s).getDay()]+'</span><span class="dn">'+parse(s).getDate()+'</span><span class="mini"><i style="width:'+(n/6*100)+'%"></i></span>';
+      b.addEventListener("click",function(){view=s;render();});
+      st.appendChild(b);
+    })(addDays(ws,i));
+  }
+}
+
+function renderStats(){
+  var t=today(),s=0,c=t;
+  if(countFor(c)<4)c=addDays(c,-1);
+  while(countFor(c)>=4){s++;c=addDays(c,-1);}
+  var ws=weekStart(view),tot=0,days=0;
+  for(var i=0;i<7;i++){var k=addDays(ws,i);if(k<=t){tot+=countFor(k);days++;}}
+  var pw=addDays(ws,-7),ptot=0;
+  for(var j=0;j<7;j++){ptot+=countFor(addDays(pw,j));}
+  document.getElementById("streak").textContent=s;
+  document.getElementById("wkTotal").textContent=tot+" of "+(days*6);
+  document.getElementById("wkAvg").textContent=(days?tot/days:0).toFixed(1);
+  document.getElementById("prevAvg").textContent=(ptot/7).toFixed(1);
+}
+var TITLES=[[1,'Starter'],[3,'Building momentum'],[5,'Consistent'],[8,'Disciplined'],[12,'Locked in'],[16,'Relentless'],[20,'Future self']];
+function levelStart(n){return 50*(n-1)*n;}
+function computeXP(){
+  var xp=0,today_=today(),todayXp=0;
+  var keys={};Object.keys(state.days).forEach(function(k){keys[k]=1;});Object.keys(state.journal).forEach(function(k){keys[k]=1;});
+  Object.keys(keys).sort().forEach(function(k){
+    if(k>today_)return;
+    var d=0,c=countFor(k);d+=c*10;if(c===6)d+=20;
+    var day=state.days[k]||{};if((day.water||0)>=waterGoal())d+=15;
+    var j=state.journal[k];
+    if(j){j.trades.forEach(function(t){if(t.plan==='yes')d+=15;});if(j.well&&j.mis&&j.tom)d+=10;}
+    xp+=d;if(k===today_)todayXp=d;
+  });
+  var run=0,start=Object.keys(keys).sort()[0];
+  if(start){for(var s=start;s<=today_;s=addDays(s,1)){if(countFor(s)>=4){run++;if(run%7===0){xp+=50;if(s===today_)todayXp+=50;}}else run=0;}}
+  Object.keys(state.weeks).forEach(function(k){var w=state.weeks[k]||{};WEEKLY.forEach(function(x){if(w[x[0]])xp+=15;});});
+  GOALS_W.forEach(function(x){if(state.goals[x[0]])xp+=200;});
+  GOALS_T.forEach(function(x){if(state.goals[x[0]])xp+=150;});
+  return {xp:xp,today:todayXp};
+}
+var REWARD_LEVELS=[[3,'New water bottle or a fresh journal and pen'],[5,'Good walking shoes or a workout outfit'],[8,'Trading desk upgrade'],[12,'A massage or a day trip'],[16,'New clothes in my new size'],[20,'Weekend trip to Fort Lauderdale']];
+var PAY_REWARDS=[['p1000','First $1,000 payout','Second monitor']];
+var curLevel=1,rwRefs=[];
+function rwCard(key,title,def,isOpen,lockText,canClaim){
+  var g=state.goals,c=document.createElement('div');c.className='rw';
+  var h=document.createElement('div');h.className='rwhead';h.innerHTML='<b></b><span class="rwtag"></span>';h.querySelector('b').textContent=title;c.appendChild(h);
+  var i=document.createElement('input');i.value=(typeof g['rw-'+key]==='string'?g['rw-'+key]:def);i.setAttribute('aria-label','Reward for '+title);
+  i.addEventListener('input',function(){g['rw-'+key]=i.value;save();});c.appendChild(i);
+  var bw=document.createElement('div');bw.className='rwbtns';
+  var cl=document.createElement('button');cl.type='button';cl.textContent='Claimed';
+  cl.addEventListener('click',function(){if(!isOpen()){return;}g['rc-'+key]=!g['rc-'+key];save();upd();});
+  bw.appendChild(cl);c.appendChild(bw);
+  function upd(){var open=isOpen(),claimed=!!g['rc-'+key];c.className='rw'+(open?' open':'');h.querySelector('.rwtag').textContent=claimed?'Claimed':open?'Unlocked':lockText();cl.setAttribute('aria-pressed',claimed?'true':'false');cl.style.display=open?'block':'none';}
+  rwRefs.push(upd);upd();return c;
+}
+function renderRewards(){
+  rwRefs=[];var g=state.goals;
+  var pay=document.getElementById('rwPay');pay.innerHTML='';
+  PAY_REWARDS.forEach(function(p){
+    var card=rwCard(p[0],p[1],p[2],function(){return !!g['pay-'+p[0]];},function(){return 'Locked';});
+    var bw=card.querySelector('.rwbtns');
+    var got=document.createElement('button');got.type='button';got.textContent='Payout received';
+    function sync(){got.setAttribute('aria-pressed',g['pay-'+p[0]]?'true':'false');}
+    got.addEventListener('click',function(){g['pay-'+p[0]]=!g['pay-'+p[0]];if(!g['pay-'+p[0]])g['rc-'+p[0]]=false;save();sync();rwRefs.forEach(function(f){f();});});
+    bw.insertBefore(got,bw.firstChild);sync();
+    pay.appendChild(card);
+  });
+  var lv=document.getElementById('rwLevels');lv.innerHTML='';
+  REWARD_LEVELS.forEach(function(r){
+    lv.appendChild(rwCard('l'+r[0],'Level '+r[0],r[1],function(){return curLevel>=r[0];},function(){return 'Level '+r[0]+' needed';}));
+  });
+}
+function renderLevel(){
+  var r=computeXP(),xp=r.xp,lvl=1;
+  while(xp>=levelStart(lvl+1))lvl++;
+  var t='Starter';TITLES.forEach(function(p){if(lvl>=p[0])t=p[1];});
+  var a=levelStart(lvl),b=levelStart(lvl+1);
+  curLevel=lvl;rwRefs.forEach(function(f){f();});
+  document.getElementById('lvlNum').textContent=lvl;
+  document.getElementById('lvlName').textContent='Level '+lvl+', '+t;
+  document.getElementById('lvlSub').textContent=xp.toLocaleString()+' XP total, +'+r.today+' today';
+  document.getElementById('lvlFill').style.width=((xp-a)/(b-a)*100)+'%';
+  document.getElementById('lvlNext').textContent=(b-xp).toLocaleString()+' XP to level '+(lvl+1);
+  var seen=0;try{seen=parseInt(localStorage.getItem('tracker-lvl-seen')||'0',10)||0;}catch(e){}
+  var up=document.getElementById('lvlUp');
+  if(seen&&lvl>seen){up.textContent='Level up! You reached level '+lvl+'.';up.style.display='block';}
+  if(lvl!==seen){try{localStorage.setItem('tracker-lvl-seen',String(lvl));}catch(e){}}
+}
+function updateScore(){
+  renderLevel();
+  renderStats();
+  var n=countFor(view);
+  document.getElementById("count").textContent=n;
+  document.getElementById("fill").style.width=(n/6*100)+"%";
+  var m=n===6?"Perfect day.":n>=4?"You’re winning this day.":n>0?"Good start.":"A missed day just means you start the next one fresh.";
+  document.getElementById("msg").textContent=m;
+}
+
+document.getElementById("prev").addEventListener("click",function(){view=addDays(view,-1);render();});
+document.getElementById("next").addEventListener("click",function(){if(view<today()){view=addDays(view,1);render();}});
+document.getElementById("todayBtn").addEventListener("click",function(){view=today();render();});
+document.getElementById("clearDay").addEventListener("click",function(){state.days[view]={};save();render();});
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&view>today()){view=today();}});
+
+
+var cloud=null,cloudReady=false,synced={},syncTimer=null,syncing=false,syncAgain=false;
+function setStatus(t){var el=document.getElementById('syncStatus');if(el)el.textContent=t;}
+function hasContent(o){return o&&Object.keys(o).some(function(k){var v=o[k];return v&&(typeof v!=='object'||Object.keys(v).length);});}
+function cloudDocs(){
+  var out={},months={};
+  function m(k){var id='m-'+k.slice(0,7);if(!months[id])months[id]={days:{},journal:{}};return months[id];}
+  Object.keys(state.days).forEach(function(k){if(hasContent(state.days[k]))m(k).days[k]=state.days[k];});
+  Object.keys(state.journal).forEach(function(k){var j=state.journal[k];if(j&&(j.trades.length||j.noTrade||j.ntReason||j.mb||j.ma||j.well||j.mis||j.tom))m(k).journal[k]=j;});
+  Object.keys(months).forEach(function(id){out[id]=months[id];});
+  var wk={};Object.keys(state.weeks).forEach(function(k){if(hasContent(state.weeks[k]))wk[k]=state.weeks[k];});
+  out['weeks']={weeks:wk};
+  out['meta']={goals:state.goals||{},notes:state.notes||''};
+  Object.keys(synced).forEach(function(id){if(!out[id])out[id]={days:{},journal:{}};});
+  return out;
+}
+function applyCloud(docs){
+  docs.forEach(function(d){
+    var b=d.data()||{};
+    if(d.id.indexOf('m-')===0){
+      Object.keys(b.days||{}).forEach(function(k){state.days[k]=JSON.parse(JSON.stringify(b.days[k]));});
+      Object.keys(b.journal||{}).forEach(function(k){state.journal[k]=JSON.parse(JSON.stringify(b.journal[k]));});
+    }else if(d.id==='weeks'){
+      Object.keys(b.weeks||{}).forEach(function(k){state.weeks[k]=JSON.parse(JSON.stringify(b.weeks[k]));});
+    }else if(d.id==='meta'){
+      if(b.goals)state.goals=JSON.parse(JSON.stringify(b.goals));
+      if(typeof b.notes==='string'&&b.notes)state.notes=b.notes;
+    }
+  });
+}
+function scheduleSync(){if(!cloudReady)return;clearTimeout(syncTimer);setStatus('Saving…');syncTimer=setTimeout(pushSync,900);}
+async function pushSync(){
+  if(syncing){syncAgain=true;return;}
+  syncing=true;
+  try{
+    var docs=cloudDocs();
+    for(var id in docs){
+      var j=JSON.stringify(docs[id]);
+      if(synced[id]!==j){await cloud.doc(id).set(docs[id]);synced[id]=j;}
+    }
+    setStatus('Saved to your Claude account');
+  }catch(e){setStatus('Saved on this phone. Account sync failed, will retry on your next change.');}
+  syncing=false;
+  if(syncAgain){syncAgain=false;pushSync();}
+}
+async function startSync(){
+  if(!window.claude||typeof claude.use!=='function'){setStatus('Saved on this phone');return;}
+  setStatus('Connecting to your account…');
+  var db=null,u=null;
+  try{db=await claude.use('db');u=await claude.use('user');}catch(e){}
+  var uid=null;
+  try{uid=u?await u.id():null;}catch(e){}
+  if(!db||!uid){setStatus('Saved on this device only. Open it while signed in to Claude to sync.');return;}
+  cloud=db.collection('data/users/'+uid);
+  try{
+    var snap=await cloud.limit(1000).get();
+    applyCloud(snap.docs);
+    snap.docs.forEach(function(d){synced[d.id]=JSON.stringify(d.data()||{});});
+  }catch(e){setStatus('Could not reach your account. Saved on this phone for now.');return;}
+  cloudReady=true;
+  try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+  render();
+  pushSync();
+}
+
+
+var bkPending=null;
+function bkMsg(t){document.getElementById('bkMsg').textContent=t;}
+function backupText(){return JSON.stringify({app:'daily-tracker',version:1,exported:new Date().toISOString(),state:state});}
+function restoreFrom(text){
+  var o;try{o=JSON.parse(text);}catch(e){bkMsg('That backup code is not readable. Copy the whole code and try again.');return;}
+  var s=o&&o.state?o.state:o;
+  if(!s||typeof s!=='object'||typeof s.days!=='object'){bkMsg('That is not a tracker backup. Copy the whole code and try again.');return;}
+  if(bkPending!==text){bkPending=text;var n=Object.keys(s.days).length;bkMsg('Backup has '+n+(n===1?' day':' days')+'. Tap restore again to replace everything here with it.');return;}
+  bkPending=null;
+  state={days:s.days||{},weeks:s.weeks||{},goals:s.goals||{},notes:s.notes||'',journal:s.journal||{}};
+  save();render();bkMsg('Backup restored.');
+}
+document.getElementById('bkShow').addEventListener('click',function(){
+  var t=document.getElementById('bkText');t.value=backupText();t.focus();t.select();
+  bkMsg('Backup code is in the box. Long press it, choose Select all, then Copy, and paste it in the other version.');
+});
+document.getElementById('bkRestore').addEventListener('click',function(){
+  var v=document.getElementById('bkText').value.trim();
+  if(!v){bkMsg('Paste a backup code in the box first.');return;}
+  restoreFrom(v);
+});
+
+document.getElementById('bkDownload').addEventListener('click',function(){
+  var blob=new Blob([backupText()],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tracker-backup-'+today()+'.json';
+  document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+  try{localStorage.setItem('tracker-last-backup',today());}catch(e){}
+  bkMsg('Backup downloaded. It is in your Downloads folder.');
+});
+document.getElementById('bkUpload').addEventListener('click',function(){document.getElementById('bkFile').click();});
+document.getElementById('bkFile').addEventListener('change',function(ev){
+  var f=ev.target.files&&ev.target.files[0];if(!f)return;
+  var r=new FileReader();r.onload=function(){bkPending=String(r.result);restoreFrom(String(r.result));};r.readAsText(f);ev.target.value='';
+});
+(function(){var lb=null;try{lb=localStorage.getItem('tracker-last-backup');}catch(e){}
+  if(!lb)bkMsg('No backup yet. Download one now and then so your history is safe.');
+  else{var days=Math.round((parse(today())-parse(lb))/864e5);if(days>=7)bkMsg('Last backup was '+days+' days ago. Download a new one to stay safe.');}
+})();
+if(navigator.storage&&navigator.storage.persist){try{navigator.storage.persist();}catch(e){}}
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+load();view=today();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}render();startSync();
+</script>
+</body>
+</html>
