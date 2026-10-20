@@ -172,6 +172,12 @@ main{padding-bottom:110px !important}
 .gnudge{margin-top:6px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:.82rem}
 .gdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line);margin-right:6px;vertical-align:1px}
 .gdot.on{background:var(--accent)}
+.greet{margin:2px 0 12px;color:var(--muted);font-size:.95rem}
+.greet b{color:var(--ink)}
+.greet button{margin-left:4px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font-size:.82rem}
+#splash .sp-hi{font-size:1rem;margin:18px 0 0;color:var(--ink);font-weight:600}
+#profSec input{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit}
+#profSave{width:100%;min-height:48px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer;margin-top:4px}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -194,6 +200,7 @@ main{padding-bottom:110px !important}
     <p class="sp-name">Daily Edge</p>
     <div class="sp-line" aria-hidden="true"></div>
     <p class="sp-quote">“Discipline over dopamine.”</p>
+    <p class="sp-hi" id="spHi"></p>
   </div>
 </div>
 <main>
@@ -209,6 +216,7 @@ main{padding-bottom:110px !important}
 
   </div>
   <div class="tab" data-tab="today">
+  <p class="greet" id="greet" aria-live="polite"></p>
   <section class="score" aria-live="polite">
     <div><b id="count">0</b> of <span id="countOf">6</span> done</div>
     <div class="bar"><div class="fill" id="fill"></div></div>
@@ -368,6 +376,14 @@ main{padding-bottom:110px !important}
   <section class="chartcard" aria-labelledby="chWaterH"><h3 id="chWaterH">Water, average glasses per day</h3><p class="msg" id="chWaterMsg"></p><div id="chWater"></div></section>
 </div>
 <div class="tab" data-tab="settings" hidden>
+  <h2 id="profTitle">Profile</h2>
+  <section class="water" id="profSec" aria-label="Profile">
+    <div class="fld" style="margin:0"><span>Username</span><input id="profUser" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="rj_trades"></div>
+    <p class="msg">3 to 20 letters, numbers, underscores, or periods. Used in greetings, your group, and invites.</p>
+    <button type="button" id="profSave">Save username</button>
+    <p class="msg" id="profMsg" aria-live="polite"></p>
+  </section>
+
   <h2 id="ckTitle">Daily checklist</h2>
   <section class="water" aria-label="Edit daily checklist">
     <p class="msg" style="margin-top:0">Rename, reorder, add, or remove your daily boxes. Changes apply from today on.</p>
@@ -501,7 +517,7 @@ function render(){
   });
   WEEKLY.forEach(function(x){wEl.appendChild(makeItem(x[0],x[1],state.weeks[ws]));});
   document.getElementById("weekTitle").textContent="Weekly review, week of "+parse(ws).toLocaleDateString(undefined,{month:"short",day:"numeric"});
-  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();renderChecklist();renderWeight();renderLimits();renderRisk();renderPayout();renderInsights();var chTab=document.querySelector('.tab[data-tab="charts"]');if(chTab&&!chTab.hidden)renderCharts();if(typeof renderNotif==='function')renderNotif();
+  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();renderChecklist();renderWeight();renderLimits();renderRisk();renderPayout();renderInsights();renderProfile();var chTab=document.querySelector('.tab[data-tab="charts"]');if(chTab&&!chTab.hidden)renderCharts();if(typeof renderNotif==='function')renderNotif();
 }
 
 function jEntry(){var e=state.journal[view];if(!e){e={trades:[],mb:'',ma:'',well:'',mis:'',tom:''};state.journal[view]=e;}return e;}
@@ -925,7 +941,7 @@ function todayStatus(){
 var nTimer=null;
 function nMirror(){
   if(!('caches' in window))return;
-  try{caches.open('tracker-data').then(function(c){return c.put('/__state',new Response(JSON.stringify({status:todayStatus(),url:nUrl(),id:nDevice()}),{headers:{'Content-Type':'application/json'}}));}).catch(function(){});}catch(e){}
+  try{caches.open('tracker-data').then(function(c){return c.put('/__state',new Response(JSON.stringify({status:todayStatus(),url:nUrl(),id:nDevice(),name:userName()}),{headers:{'Content-Type':'application/json'}}));}).catch(function(){});}catch(e){}
 }
 function nSchedule(){clearTimeout(nTimer);nTimer=setTimeout(nSendStatus,2500);}
 function nSendStatus(){
@@ -1331,6 +1347,7 @@ var gTimer=null,gView=null,gLoading=false,gMsgText='',gLeaveArm=false;
 function gSchedule(){if(!gCfg()||!gUrl())return;clearTimeout(gTimer);gTimer=setTimeout(gPush,8000);}
 async function gPush(){
   if(!gCfg()||!gUrl())return;
+  if(userName()&&gCfg().nick&&gCfg().nick!==userName()){try{var rb=gAuth();rb.nick=userName();await gPost('/group/rename',rb);gCfg().nick=userName();save();}catch(e){}}
   var st=JSON.stringify(gStats()),last=null;try{last=localStorage.getItem('de-group-last');}catch(e){}
   if(st===last)return;
   try{var b=gAuth();b.stats=JSON.parse(st);b.deviceId=nDevice();await gPost('/group/update',b);try{localStorage.setItem('de-group-last',st);}catch(e){}}
@@ -1355,15 +1372,18 @@ function renderGroup(){
   if(!g){
     var intro=el('div','gcard');intro.appendChild(el('h3',null,'Stay accountable together'));
     intro.appendChild(el('p','msg','Join a small group of up to 10 friends. They only see what you choose to share: your level, streak, today’s boxes, this week’s %, and plan followed %. Never your weight, trades, journal, or P&L.'));
-    var nickF=el('div','fld');nickF.appendChild(el('span',null,'Your nickname'));var nick=el('input');nick.id='gNick';nick.maxLength=24;nick.placeholder='RJ';nick.value=state.goals.groupNick||'';nickF.appendChild(nick);intro.appendChild(nickF);body.appendChild(intro);
+    var nick=el('input');nick.id='gNick';nick.maxLength=20;nick.placeholder='rj_trades';nick.setAttribute('autocapitalize','off');nick.value=userName();
+    if(userName()){var who=el('p','msg');who.appendChild(document.createTextNode('You\u2019ll appear as '));var wb=el('b',null,userName());who.appendChild(wb);who.appendChild(document.createTextNode('. Change it in Settings, under Profile.'));intro.appendChild(who);}
+    else{var nickF=el('div','fld');nickF.appendChild(el('span',null,'Pick a username'));nickF.appendChild(nick);intro.appendChild(nickF);intro.appendChild(el('p','msg','3 to 20 letters, numbers, underscores, or periods. It becomes your username everywhere in the app.'));}
+    body.appendChild(intro);
     var cc=el('div','gcard');cc.appendChild(el('h3',null,'Start a group'));var nm=el('input');nm.id='gName';nm.maxLength=24;nm.placeholder='Group name, like Edge Crew';cc.appendChild(nm);
     var cb=el('button','gbtn','Create group');cb.type='button';cc.appendChild(cb);body.appendChild(cc);
     var jc=el('div','gcard');jc.appendChild(el('h3',null,'Join a friend’s group'));var code=el('input');code.id='gCode';code.maxLength=8;code.placeholder='Group code, like 5MZG5Z';code.setAttribute('autocapitalize','characters');code.style.textTransform='uppercase';jc.appendChild(code);
     var jb=el('button','gbtn alt','Join group');jb.type='button';jc.appendChild(jb);body.appendChild(jc);
     var msg=el('p','msg');msg.id='gMsg';msg.setAttribute('aria-live','polite');body.appendChild(msg);
     async function go(path,extra){
-      var n=nick.value.trim();if(!n){msg.textContent='Pick a nickname first.';nick.focus();return;}
-      state.goals.groupNick=n;cb.disabled=jb.disabled=true;msg.textContent=path==='/group/create'?'Creating your group…':'Joining…';
+      var n=userName()||nick.value.trim();if(!validUser(n)){msg.textContent='Pick a username first: 3 to 20 letters, numbers, underscores, or periods.';nick.focus();return;}
+      if(!userName()){state.goals.username=n;save();renderProfile();}cb.disabled=jb.disabled=true;msg.textContent=path==='/group/create'?'Creating your group…':'Joining…';
       try{
         var share={level:true,streak:true,today:true,week:true,plan:true};state.goals.group={share:share};
         var req={nick:n,deviceId:nDevice(),stats:gStats()};for(var k in extra)req[k]=extra[k];
@@ -1382,7 +1402,7 @@ function renderGroup(){
   var inv=el('button','gbtn','Invite friends');inv.type='button';head.appendChild(inv);
   var invMsg=el('p','msg');invMsg.setAttribute('aria-live','polite');head.appendChild(invMsg);
   inv.addEventListener('click',async function(){
-    var link=location.origin+location.pathname,text='Join my Daily Edge group "'+(g.name||'')+'". Open '+link+', install it, go to the Group tab, and enter code '+g.code+'. Discipline over dopamine.';
+    var link=location.origin+location.pathname,text=(userName()?userName()+' invited you to':'Join')+' my Daily Edge group "'+(g.name||'')+'". Open '+link+', install it, go to the Group tab, and enter code '+g.code+'. Discipline over dopamine.';
     try{if(navigator.share){await navigator.share({title:'Join my Daily Edge group',text:text});return;}}catch(e){if(e&&e.name==='AbortError')return;}
     try{await navigator.clipboard.writeText(text);invMsg.textContent='Invite copied. Paste it in a text to your friends.';}catch(e){invMsg.textContent='Send your friends this code: '+g.code+', plus the app link: '+link;}
   });
@@ -1421,6 +1441,33 @@ function renderGroup(){
     gLeaveArm=false;try{await gPost('/group/leave',gAuth());}catch(e){}delete state.goals.group;gView=null;gMsgText='';try{localStorage.removeItem('de-group-last');}catch(e){}save();renderGroup();});
   body.appendChild(lv);
 }
+
+/* ---------- profile ---------- */
+function userName(){var u=state.goals.username;return typeof u==='string'?u:'';}
+function validUser(u){return /^[A-Za-z0-9_.]{3,20}$/.test(u);}
+function greetWord(){var h=new Date().getHours();return h<12?'Good morning':h<17?'Good afternoon':'Good evening';}
+function renderProfile(){
+  var u=userName(),inp=document.getElementById('profUser');if(inp&&document.activeElement!==inp)inp.value=u;
+  var g=document.getElementById('greet');
+  if(g){g.innerHTML='';if(u){g.appendChild(document.createTextNode(greetWord()+', '));var b=document.createElement('b');b.textContent=u;g.appendChild(b);g.appendChild(document.createTextNode('. Discipline over dopamine.'));}
+    else{g.appendChild(document.createTextNode('Pick a username in Settings so your greetings and group know it’s you. '));var a=document.createElement('button');a.type='button';a.textContent='Set username';a.addEventListener('click',function(){showTab('settings');var el=document.getElementById('profTitle');if(el)el.scrollIntoView({block:'start'});setTimeout(function(){document.getElementById('profUser').focus();},50);});g.appendChild(a);}}
+  var hi=document.getElementById('spHi');if(hi)hi.textContent=u?'Welcome back, '+u+'.':'';
+}
+async function setUserName(u){
+  var m=document.getElementById('profMsg');
+  u=(u||'').trim();
+  if(!validUser(u)){m.className='msg bad';m.textContent='Use 3 to 20 letters, numbers, underscores, or periods. No spaces.';return false;}
+  if(u===userName()){m.className='msg';m.textContent='That’s already your username.';return true;}
+  if(typeof gCfg==='function'&&gCfg()&&gCfg().code){
+    m.className='msg';m.textContent='Updating your group…';
+    try{var b=gAuth();b.nick=u;await gPost('/group/rename',b);gCfg().nick=u;if(gView)gView=null;}
+    catch(e){m.className='msg bad';m.textContent=(e&&e.message)||'Could not update your group. Try again.';return false;}
+  }
+  state.goals.username=u;save();renderProfile();if(typeof renderGroup==='function')renderGroup();
+  m.className='msg ok';m.textContent='Saved. You’re '+u+' now.';return true;
+}
+document.getElementById('profSave').addEventListener('click',function(){setUserName(document.getElementById('profUser').value);});
+document.getElementById('profUser').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();setUserName(this.value);}});
 
 var bkPending=null;
 function bkMsg(t){document.getElementById('bkMsg').textContent=t;}
@@ -1475,7 +1522,7 @@ function showTab(name){
 document.querySelectorAll('.tabbar button').forEach(function(b){b.addEventListener('click',function(){showTab(b.getAttribute('data-go'));window.scrollTo(0,0);});});
 (function(){var t='today';try{t=localStorage.getItem(TAB_KEY)||'today';}catch(e){}if(!document.querySelector('.tab[data-tab="'+t+'"]'))t='today';showTab(t);})();
 load();view=today();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}render();startSync();
-(function(){var sp=document.getElementById('splash');if(!sp)return;var done=false;
+(function(){var sp=document.getElementById('splash');if(!sp)return;try{renderProfile();}catch(e){}var done=false;
   function hide(){if(done)return;done=true;sp.classList.add('gone');setTimeout(function(){sp.style.display='none';},500);}
   sp.addEventListener('click',hide);setTimeout(hide,1900);})();
 

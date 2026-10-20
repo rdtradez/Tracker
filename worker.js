@@ -195,6 +195,14 @@ async function handleGroup(path, body, env) {
     return json({ ok: true, pushed });
   }
 
+  if (path === "/group/rename") {
+    const nick = cleanNick(body.nick); if (!nick) return json({ error: "Pick a username first." }, 400);
+    const taken = Object.entries(g.members).some(([id, m]) => id !== body.memberId && m.nick.toLowerCase() === nick.toLowerCase());
+    if (taken) return json({ error: "Someone in your group already uses that username. Pick another." }, 409);
+    me.nick = nick; await env.SUBS.put(gkey(code), JSON.stringify(g));
+    return json({ ok: true });
+  }
+
   if (path === "/group/clearnudges") { await env.SUBS.delete(nkey(code, body.memberId)); return json({ ok: true }); }
 
   if (path === "/group/leave") {
