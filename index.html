@@ -178,6 +178,8 @@ main{padding-bottom:110px !important}
 #splash .sp-hi{font-size:1rem;margin:18px 0 0;color:var(--ink);font-weight:600}
 #profSec input{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit}
 #profSave{width:100%;min-height:48px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer;margin-top:4px}
+.pnew{background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px;margin-bottom:10px}
+.pnew select,.pnew input,.tcard select{width:100%;min-height:44px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -259,6 +261,7 @@ main{padding-bottom:110px !important}
   <div class="tab" data-tab="trades" hidden>
   <h2 id='journalTop' style='scroll-margin-top:12px'>Trade journal</h2>
   <p class='msg' id='jDateLine'></p>
+  <div class='jcard' id='preCard'><b>Pre-trade check</b><p class='msg' style='margin:4px 0 10px'>Answer these before your first trade.</p><div id='preList'></div><p class='msg' id='preMsg' style='margin:6px 0 0'></p></div>
   <section class='stats' aria-label='Journal summary'>
     <div class='stat'><b id='jWeek'>$0</b><span>this week</span></div>
     <div class='stat'><b id='jAll'>$0</b><span>all logged trades</span></div>
@@ -278,7 +281,6 @@ main{padding-bottom:110px !important}
     <div class='fld' id='ntReasonWrap' style='margin:10px 0 0'><span>Reason</span><input id='ntReason' placeholder='Weekend, holiday, news day, or sat out on purpose'></div>
     <p class='msg' id='ntMsg' aria-live='polite'></p>
   </div>
-  <div class='jcard' id='preCard'><b>Pre-trade check</b><p class='msg' style='margin:4px 0 10px'>Answer these before your first trade.</p><div id='preList'></div><p class='msg' id='preMsg' style='margin:6px 0 0'></p></div>
   <div class='jcard'><div class='fld'><span>Mood before</span><input id='jMb' placeholder='excited'></div></div>
   <div id='jTrades'></div>
   <button class='addbtn' id='addTrade' type='button'>Add trade</button>
@@ -297,6 +299,7 @@ main{padding-bottom:110px !important}
   <h2 id="ppTitle">Payout progress</h2>
   <p class="msg" style="margin-top:0">Progress is calculated from trades logged with a matching account name.</p>
   <div id="ppList"></div>
+  <div id="ppNew" style="display:none"></div>
   <button class="addbtn" id="ppAdd" type="button">Add an account</button>
 
   <h2 id="inTitle">Insights</h2>
@@ -558,7 +561,7 @@ function renderJournal(){
     h.querySelector('b').textContent='Trade '+(idx+1);
     h.querySelector('.del').addEventListener('click',function(){e.trades.splice(idx,1);save();renderJournal();});
     c.appendChild(h);
-    c.appendChild(field('Account',inp(t.acct,'Midgard 50K','text','',function(v){t.acct=v;save();jTotals();},'accts')));
+    c.appendChild(field('Account',acctSelect(t)));
     c.appendChild(field('Direction',seg([['long','Long'],['short','Short']],t.dir,function(v){t.dir=v;save();})));
     c.appendChild(field('Entry time',inp(t.time,'','time','',function(v){t.time=v;save();})));
     c.appendChild(field('Entry price',inp(t.entry,'29857.50','text','decimal',function(v){t.entry=v;save();})));
@@ -751,7 +754,7 @@ function computeXP(){
     var d=0,c=countFor(k);d+=c*10;if(c===NB())d+=20;
     var day=state.days[k]||{};if((day.water||0)>=waterGoal())d+=15;
     var j=state.journal[k];
-    if(j){j.trades.forEach(function(t){if(t.plan==='yes')d+=15;});if(j.well&&j.mis&&j.tom)d+=10;if(preDone(j))d+=10;}
+    if(j){j.trades.forEach(function(t){if(t.plan==='yes')d+=15;});if(j.well&&j.mis&&j.tom)d+=10;if(preDone(j,k))d+=10;}
     xp+=d;if(k===today_)todayXp=d;
   });
   var run=0,start=Object.keys(keys).sort()[0];
@@ -1119,8 +1122,9 @@ document.getElementById('limLoss').addEventListener('change',function(){var v=pa
 document.getElementById('limTrades').addEventListener('change',function(){var v=parseInt(this.value,10);if(v>0)risk().maxTrades=v;else delete risk().maxTrades;save();renderRisk();renderRemind();});
 
 /* ---------- pre-trade check ---------- */
-var PRE=[['sleep','Slept at least 6 hours'],['plan','Plan and risk limit written'],['news','Checked news and events'],['calm','Feeling calm and focused']];
-function preDone(j){return !!(j&&j.pre&&PRE.every(function(p){return j.pre[p[0]];}));}
+var PRE=[['levels','Marked out my key levels'],['sleep','Slept at least 6 hours'],['plan','Plan and risk limit written'],['news','Checked news and events'],['calm','Feeling calm and focused']];
+var PRE_LEVELS_FROM='2026-10-20';
+function preDone(j,k){if(!(j&&j.pre))return false;var need=(k&&k<PRE_LEVELS_FROM)?PRE.filter(function(p){return p[0]!=='levels';}):PRE;return need.every(function(p){return j.pre[p[0]];});}
 function renderPre(){
   var e=jEntry(),card=document.getElementById('preCard'),list=document.getElementById('preList');
   card.style.display=e.noTrade?'none':'block';list.innerHTML='';
@@ -1193,7 +1197,7 @@ function renderPayout(){
     list.appendChild(c);
   });
 }
-document.getElementById('ppAdd').addEventListener('click',function(){var a=accounts();if(a.length>=10)return;a.push({name:a.length?'':'Midgard 50K'});ppEditing={};ppEditing[a.length-1]=true;save();renderPayout();});
+document.getElementById('ppAdd').addEventListener('click',function(){var n=document.getElementById('ppNew');renderNewAcct();n.style.display='block';n.scrollIntoView({block:'nearest'});});
 
 /* ---------- insights ---------- */
 var inRange='30';
@@ -1468,6 +1472,57 @@ async function setUserName(u){
 }
 document.getElementById('profSave').addEventListener('click',function(){setUserName(document.getElementById('profUser').value);});
 document.getElementById('profUser').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();setUserName(this.value);}});
+
+/* ---------- account picker ---------- */
+var FIRMS=['Tradeify','Midgard','Lucid','TPT','MFFU','Apex','FFF','Halcyon','Other'];
+var FIRM_FULL={TPT:'Take Profit Trader',MFFU:'MyFundedFutures',FFF:'Funded Futures Family'};
+var SIZES=['25K','50K','100K','150K','250K',''];
+function acctNames(){
+  var seen={},out=[];
+  accounts().forEach(function(a){var n=(a.name||'').trim();if(n&&!seen[n.toLowerCase()]){seen[n.toLowerCase()]=1;out.push(n);}});
+  return out;
+}
+function acctSelect(t){
+  var wrap=document.createElement('div'),sel=document.createElement('select'),other=document.createElement('input');
+  sel.setAttribute('aria-label','Account');other.placeholder='Type the account name';other.setAttribute('aria-label','Account name');other.style.marginTop='6px';
+  var names=acctNames(),presets=names.length?[]:['Tradeify','Midgard 50K','Lucid','TPT','MFFU','Apex'];
+  var list=names.concat(presets),cur=(t.acct||'').trim();
+  if(cur&&!list.some(function(n){return n.toLowerCase()===cur.toLowerCase();}))list.unshift(cur);
+  var o0=document.createElement('option');o0.value='';o0.textContent='Choose an account';sel.appendChild(o0);
+  list.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;if(n.toLowerCase()===cur.toLowerCase())o.selected=true;sel.appendChild(o);});
+  var oo=document.createElement('option');oo.value='__other';oo.textContent='Other account…';sel.appendChild(oo);
+  other.style.display='none';
+  sel.addEventListener('change',function(){if(sel.value==='__other'){other.style.display='block';other.value='';other.focus();return;}other.style.display='none';t.acct=sel.value;save();jTotals();});
+  other.addEventListener('change',function(){var v=other.value.trim();if(!v)return;t.acct=v;save();jTotals();});
+  wrap.appendChild(sel);wrap.appendChild(other);
+  if(!names.length){var h=document.createElement('p');h.className='msg';h.style.margin='4px 0 0';h.textContent='Tip: add your accounts under Payout progress so this list shows exactly yours.';wrap.appendChild(h);}
+  return wrap;
+}
+function renderNewAcct(){
+  var box=document.getElementById('ppNew');if(!box)return;box.innerHTML='';box.className='pnew';
+  var h=document.createElement('b');h.textContent='Add an account';box.appendChild(h);
+  function lab(t,el){var d=document.createElement('div');d.className='fld';d.style.margin='8px 0 0';var s=document.createElement('span');s.textContent=t;d.appendChild(s);d.appendChild(el);return d;}
+  var firm=document.createElement('select');FIRMS.forEach(function(f){var o=document.createElement('option');o.value=f;o.textContent=FIRM_FULL[f]?f+' ('+FIRM_FULL[f]+')':f;firm.appendChild(o);});
+  var custom=document.createElement('input');custom.placeholder='Firm name';
+  var size=document.createElement('select');SIZES.forEach(function(z){var o=document.createElement('option');o.value=z;o.textContent=z||'No size';if(z==='50K')o.selected=true;size.appendChild(o);});
+  var tag=document.createElement('input');tag.placeholder='Optional, like #2 or Eval';tag.maxLength=12;
+  box.appendChild(lab('Prop firm',firm));var cw=lab('Firm name',custom);cw.style.display='none';box.appendChild(cw);
+  var g=document.createElement('div');g.className='g2';g.appendChild(lab('Account size',size));g.appendChild(lab('Label',tag));box.appendChild(g);
+  firm.addEventListener('change',function(){cw.style.display=firm.value==='Other'?'block':'none';});
+  var prev=document.createElement('p');prev.className='msg';box.appendChild(prev);
+  function name(){var f=firm.value==='Other'?custom.value.trim():firm.value;return [f,size.value,tag.value.trim()].filter(Boolean).join(' ');}
+  function upd(){prev.textContent=name()?'Will appear as: '+name():'Enter a firm name.';}
+  [firm,custom,size,tag].forEach(function(e){e.addEventListener('input',upd);e.addEventListener('change',upd);});upd();
+  var row=document.createElement('div');row.className='rwbtns';
+  var add=document.createElement('button');add.type='button';add.textContent='Add account';
+  var cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel';
+  add.addEventListener('click',function(){var n=name();if(!n){prev.textContent='Enter a firm name.';return;}var a=accounts();
+    if(a.some(function(x){return (x.name||'').toLowerCase()===n.toLowerCase();})){prev.className='msg bad';prev.textContent='You already have an account named '+n+'. Add a label like #2.';return;}
+    if(a.length>=15){prev.textContent='You can track up to 15 accounts.';return;}
+    a.push({name:n});ppEditing={};ppEditing[a.length-1]=true;box.style.display='none';save();renderPayout();renderJournal();});
+  cancel.addEventListener('click',function(){box.style.display='none';});
+  row.appendChild(add);row.appendChild(cancel);box.appendChild(row);
+}
 
 var bkPending=null;
 function bkMsg(t){document.getElementById('bkMsg').textContent=t;}
