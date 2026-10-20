@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Daily Tracker</title>
+<title>Daily Edge</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1f7a52">
 <link rel="icon" href="icon-192.png">
@@ -119,6 +119,41 @@ main{padding-bottom:110px !important}
 .tabbar svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tbadge{position:absolute;top:2px;left:calc(50% + 6px);background:var(--accent);color:var(--accent-ink);border-radius:999px;font-size:.68rem;font-weight:700;padding:1px 6px;line-height:1.4}
 .tab[hidden],#dayHeader[hidden]{display:none}
+.risk{border:2px solid #b3261e;border-radius:12px;padding:12px 14px;margin:10px 0;font-weight:600;background:var(--surface)}
+.risk.warn{border-color:#b7791f}
+.pp{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.pp.ready{border:2px solid var(--accent)}
+.pphead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.pprow{display:flex;justify-content:space-between;gap:8px;font-size:.92rem;padding:3px 0}
+.ok{color:var(--accent);font-weight:600}
+.bad{color:#b3261e;font-weight:600}
+@media (prefers-color-scheme:dark){:root:not([data-theme='light']) .bad,:root:not([data-theme='light']) .risk{border-color:#ff8a80}:root:not([data-theme='light']) .bad{color:#ff8a80}}
+.ppedit{display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+.pp.editing .ppedit{display:block}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.g2 .fld input,.pp .fld input,#wtSec input,#limSec input,#ckList input,#ckNew{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit}
+.itbl{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:14px;table-layout:fixed}
+.itbl th{text-align:left;color:var(--muted);font-weight:500;padding:4px 4px;border-bottom:1px solid var(--line)}
+.itbl td{padding:6px 4px;border-bottom:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.itbl th:nth-child(n+2),.itbl td:nth-child(n+2){text-align:right;width:20%}
+.ckrow{display:grid;grid-template-columns:minmax(0,1fr) 40px 40px 44px;gap:6px;align-items:center;margin-bottom:6px}
+.ckrow button{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer}
+.ckrow button:disabled{opacity:.35}
+.pre{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px;align-items:center;margin-bottom:6px;font-size:.92rem}
+.pre .seg button{min-height:40px}
+.chartcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 12px 8px;margin-bottom:12px}
+.chartcard h3{margin:0 0 2px;font-size:1rem}
+.chartcard .msg{margin:2px 0 6px}
+.chartcard svg{display:block;width:100%;height:auto}
+#splash{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:var(--bg);transition:opacity .45s ease,visibility .45s;padding:24px;cursor:pointer}
+#splash.gone{opacity:0;visibility:hidden}
+#splash .sp-in{text-align:center;max-width:340px}
+#splash .sp-mark{width:76px;height:76px;margin:0 auto 18px;border-radius:22px;background:var(--accent);display:grid;place-items:center}
+#splash .sp-mark svg{width:44px;height:44px;fill:none;stroke:var(--accent-ink);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+#splash .sp-name{font-size:2rem;font-weight:700;letter-spacing:-.02em;margin:0}
+#splash .sp-quote{font-size:1.15rem;color:var(--muted);margin:14px 0 0;font-style:italic}
+#splash .sp-line{width:40px;height:3px;border-radius:2px;background:var(--accent);margin:14px auto 0}
+@media (prefers-reduced-motion:reduce){#splash{transition:none}}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -135,6 +170,14 @@ main{padding-bottom:110px !important}
 </style>
 </head>
 <body>
+<div id="splash" role="status" aria-live="polite" aria-label="Daily Edge. Discipline over dopamine.">
+  <div class="sp-in">
+    <div class="sp-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <p class="sp-name">Daily Edge</p>
+    <div class="sp-line" aria-hidden="true"></div>
+    <p class="sp-quote">“Discipline over dopamine.”</p>
+  </div>
+</div>
 <main>
   <div id="dayHeader">
   <div class="nav">
@@ -149,7 +192,7 @@ main{padding-bottom:110px !important}
   </div>
   <div class="tab" data-tab="today">
   <section class="score" aria-live="polite">
-    <div><b id="count">0</b> of 6 done</div>
+    <div><b id="count">0</b> of <span id="countOf">6</span> done</div>
     <div class="bar"><div class="fill" id="fill"></div></div>
     <p class="msg" id="msg"></p>
   </section>
@@ -196,11 +239,20 @@ main{padding-bottom:110px !important}
     <div class='stat'><b id='jPlan'>None yet</b><span>followed plan</span></div>
   </section>
   <div id='jAccts' style='margin-top:10px'></div>
+  <section class='water' id='limSec' style='margin-top:10px' aria-label='Daily limits'>
+    <b>Daily limits</b>
+    <div class='g2' style='margin-top:8px'>
+      <div class='fld' style='margin:0'><span>Max loss per day ($)</span><input id='limLoss' inputmode='decimal' placeholder='300'></div>
+      <div class='fld' style='margin:0'><span>Max trades per day</span><input id='limTrades' inputmode='numeric' placeholder='3'></div>
+    </div>
+  </section>
+  <div id='riskBanner' role='status' aria-live='polite'></div>
   <div class='jcard' style='margin-top:10px'>
     <button type='button' class='item' id='noTradeBtn' aria-pressed='false' style='margin:0'><span class='box' aria-hidden='true'>✓</span><span class='label'>No trade day</span></button>
     <div class='fld' id='ntReasonWrap' style='margin:10px 0 0'><span>Reason</span><input id='ntReason' placeholder='Weekend, holiday, news day, or sat out on purpose'></div>
     <p class='msg' id='ntMsg' aria-live='polite'></p>
   </div>
+  <div class='jcard' id='preCard'><b>Pre-trade check</b><p class='msg' style='margin:4px 0 10px'>Answer these before your first trade.</p><div id='preList'></div><p class='msg' id='preMsg' style='margin:6px 0 0'></p></div>
   <div class='jcard'><div class='fld'><span>Mood before</span><input id='jMb' placeholder='excited'></div></div>
   <div id='jTrades'></div>
   <button class='addbtn' id='addTrade' type='button'>Add trade</button>
@@ -216,6 +268,15 @@ main{padding-bottom:110px !important}
   <datalist id='atms'><option value='High ATR'><option value='Normal ATR'><option value='Low ATR'></datalist>
   <datalist id='accts'><option value='Midgard 50K'><option value='Tradeify'><option value='Apex'><option value='FFF Velocity'><option value='FFF Prime'><option value='Halcyon'></datalist>
 
+  <h2 id="ppTitle">Payout progress</h2>
+  <p class="msg" style="margin-top:0">Progress is calculated from trades logged with a matching account name.</p>
+  <div id="ppList"></div>
+  <button class="addbtn" id="ppAdd" type="button">Add an account</button>
+
+  <h2 id="inTitle">Insights</h2>
+  <div id="inRange" style="margin-bottom:10px"></div>
+  <div id="inBody"></div>
+
   <h2>Payout rules by account</h2>
   <textarea id="rules" placeholder="List each account and its payout rules: profit target, minimum trading days, consistency rule, and how drawdown is measured."></textarea>
 
@@ -230,7 +291,9 @@ main{padding-bottom:110px !important}
     <p class="msg" id="lvlNext"></p>
     <p class="lvlup" id="lvlUp" role="status"></p>
     <details><summary>How you earn XP</summary><ul>
-      <li>10 XP for each daily box, plus 20 for a perfect 6 of 6 day</li>
+      <li>10 XP for each daily box, plus 20 for a perfect day with every box</li>
+      <li>10 XP for finishing your pre-trade check</li>
+      <li>20 XP for each week with a weigh-in</li>
       <li>15 XP for hitting your water goal</li>
       <li>15 XP for each trade where you followed your plan</li>
       <li>10 XP for filling in did well, mistake, and tomorrow’s adjustment</li>
@@ -241,11 +304,20 @@ main{padding-bottom:110px !important}
   </section>
 
   <section class="stats" aria-label="Streak and weekly summary">
-    <div class="stat"><b id="streak">0</b><span>day streak (4+ boxes)</span></div>
+    <div class="stat"><b id="streak">0</b><span id="streakLbl">day streak (4+ boxes)</span></div>
     <div class="stat"><b id="wkAvg">0.0</b><span>week avg per day</span></div>
     <div class="stat"><b id="prevAvg">0.0</b><span>prior week avg</span></div>
   </section>
   <p class="msg">Boxes this week: <span id="wkTotal">0 of 0</span></p>
+
+  <h2 id="wtTitle">Weight</h2>
+  <section class="water" id="wtSec" aria-label="Weight tracker">
+    <p class="msg" style="margin-top:0" id="wtDayLbl"></p>
+    <div class="wrow"><input id="wtIn" inputmode="decimal" placeholder="Weight in pounds" aria-label="Weight in pounds"><button class="wbtn add" id="wtSave" type="button" style="width:auto;padding:0 18px;font-size:1rem">Save</button></div>
+    <p class="msg" id="wtMsg" aria-live="polite"></p>
+    <div id="wtChart" style="margin-top:8px"></div>
+    <div class="fld" style="margin:12px 0 0"><span>Starting weight (pounds)</span><input id="wtStart" inputmode="decimal" placeholder="400"></div>
+  </section>
 
   <h2 id="weekTitle">Weekly review</h2>
   <div id="weekly"></div>
@@ -263,7 +335,25 @@ main{padding-bottom:110px !important}
   <div id="rwLevels"></div>
 
   </div>
-  <div class="tab" data-tab="settings" hidden>
+  <div class="tab" data-tab="charts" hidden>
+  <h2 style="margin-top:4px">Charts</h2>
+  <div id="chRange" style="margin-bottom:12px"></div>
+  <section class="chartcard" aria-labelledby="chBoxesH"><h3 id="chBoxesH">Daily boxes completed</h3><p class="msg" id="chBoxesMsg"></p><div id="chBoxes"></div></section>
+  <section class="chartcard" aria-labelledby="chWeightH"><h3 id="chWeightH">Weight trend</h3><p class="msg" id="chWeightMsg"></p><div id="chWeight"></div></section>
+  <section class="chartcard" aria-labelledby="chEqH"><h3 id="chEqH">Trading equity curve</h3><div id="chEqAcct" style="margin:6px 0"></div><p class="msg" id="chEqMsg"></p><div id="chEq"></div></section>
+  <section class="chartcard" aria-labelledby="chPlanH"><h3 id="chPlanH">Plan followed, by week</h3><p class="msg" id="chPlanMsg"></p><div id="chPlan"></div></section>
+  <section class="chartcard" aria-labelledby="chExH"><h3 id="chExH">Exercise minutes, by week</h3><p class="msg" id="chExMsg"></p><div id="chEx"></div></section>
+  <section class="chartcard" aria-labelledby="chWaterH"><h3 id="chWaterH">Water, average glasses per day</h3><p class="msg" id="chWaterMsg"></p><div id="chWater"></div></section>
+</div>
+<div class="tab" data-tab="settings" hidden>
+  <h2 id="ckTitle">Daily checklist</h2>
+  <section class="water" aria-label="Edit daily checklist">
+    <p class="msg" style="margin-top:0">Rename, reorder, add, or remove your daily boxes. Changes apply from today on.</p>
+    <div id="ckList"></div>
+    <div class="wrow" style="margin-top:6px"><input id="ckNew" placeholder="New daily habit, like Stretched 10 minutes" aria-label="New daily habit"><button class="wbtn add" id="ckAdd" type="button" style="width:auto;padding:0 16px;font-size:1rem">Add</button></div>
+    <p class="msg" id="ckMsg"></p>
+    <div class="rwbtns"><button type="button" id="ckReset">Reset to the original six</button></div>
+  </section>
   <h2 id="notifTitle">Notifications</h2>
   <section class="water" id="notifSec" aria-label="Notification settings">
     <p class="msg" style="margin-top:0" id="nState"></p>
@@ -291,12 +381,13 @@ main{padding-bottom:110px !important}
   <button type="button" role="tab" data-go="today" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>Today<span class="tbadge" id="tbToday" hidden></span></button>
   <button type="button" role="tab" data-go="trades" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M5 15l4-5 4 3 6-7"/></svg>Trades</button>
   <button type="button" role="tab" data-go="progress" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 12v4M9 20h6M10 16h4v4h-4z"/></svg>Progress</button>
+  <button type="button" role="tab" data-go="charts" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></svg>Charts</button>
   <button type="button" role="tab" data-go="settings" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</button>
 </div></nav>
 
 
 <script>
-var DAILY=[
+var DEFAULT_DAILY=[
   ["walk","Exercised 15 to 20 minutes"],
   ["protein","Protein at every meal"],
   ["swap","Kept my food swap (no sugary drinks)"],
@@ -304,6 +395,10 @@ var DAILY=[
   ["plan","Wrote my trading plan and risk limit before trading"],
   ["log","Logged my trades and whether I followed the plan"]
 ];
+var DAILY=DEFAULT_DAILY.slice();
+function NB(){return DAILY.length||1;}
+function WIN(){return Math.max(1,Math.ceil(NB()*2/3));}
+function applyChecklist(){var c=state.goals&&state.goals.checklist;DAILY=(Array.isArray(c)&&c.length)?c.map(function(x){return [x.id,x.label];}):DEFAULT_DAILY.slice();}
 var WEEKLY=[
   ["w-count","Counted how many boxes I hit this week"],
   ["w-tighten","Picked one thing to tighten for next week"],
@@ -356,6 +451,7 @@ function makeItem(id,text,store){
 }
 
 function render(){
+  applyChecklist();
   var t=today();
   var d=parse(view);
   document.getElementById("dayTitle").textContent=view===t?"Today":d.toLocaleDateString(undefined,{weekday:"long"});
@@ -382,7 +478,7 @@ function render(){
   });
   WEEKLY.forEach(function(x){wEl.appendChild(makeItem(x[0],x[1],state.weeks[ws]));});
   document.getElementById("weekTitle").textContent="Weekly review, week of "+parse(ws).toLocaleDateString(undefined,{month:"short",day:"numeric"});
-  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();if(typeof renderNotif==='function')renderNotif();
+  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();renderChecklist();renderWeight();renderLimits();renderRisk();renderPayout();renderInsights();var chTab=document.querySelector('.tab[data-tab="charts"]');if(chTab&&!chTab.hidden)renderCharts();if(typeof renderNotif==='function')renderNotif();
 }
 
 function jEntry(){var e=state.journal[view];if(!e){e={trades:[],mb:'',ma:'',well:'',mis:'',tom:''};state.journal[view]=e;}return e;}
@@ -438,6 +534,7 @@ function renderJournal(){
     box.appendChild(c);
   });
   var nt=!!e.noTrade;
+  renderPre();
   var ntb=document.getElementById('noTradeBtn');ntb.setAttribute('aria-pressed',nt?'true':'false');
   ntb.onclick=function(){
     if(!e.noTrade&&e.trades.length){document.getElementById('ntMsg').textContent='This day has trades logged. Delete them first to mark it as a no trade day.';return;}
@@ -455,7 +552,7 @@ function renderJournal(){
   jTotals();
 }
 function jTotals(){
-  renderLevel();
+  renderLevel();renderRisk();if(typeof renderPayout==='function'){renderPayout();renderInsights();}
   var d=dayPnl(view),el=document.getElementById('jDayTotal');
   el.textContent=money(d);el.className='big '+pnlClass(d);
   var ws=weekStart(view),wk=0,i;
@@ -489,6 +586,7 @@ function jTotals(){
 document.getElementById('addTrade').addEventListener('click',function(){
   var e=jEntry();
   var lastAcct='';Object.keys(state.journal).sort().forEach(function(k){state.journal[k].trades.forEach(function(t){if(t.acct)lastAcct=t.acct;});});
+  if(!e.noTrade&&!preDone(e))preNag=true;
   e.trades.push({acct:lastAcct,dir:'',time:'',entry:'',exit:'',atm:'',how:'stop',res:'loss',amt:'',setup:'',plan:'',after:''});
   save();renderJournal();
 });
@@ -558,7 +656,7 @@ document.getElementById('exAdd').addEventListener('click',function(){
   var name=exSel==='Other'?((document.getElementById('exOther').value||'').trim()||'Other'):exSel;
   day.ex.push({type:name,min:exMinVal});save();render();
 });
-var REMIND_OPTS=[['yesterday','Nothing logged yesterday'],['boxes','Daily boxes left'],['water','Water goal'],['trades','Log trades on weekdays'],['reflection','Followed plan and reflection'],['sunday','Sunday weekly review']];
+var REMIND_OPTS=[['yesterday','Nothing logged yesterday'],['boxes','Daily boxes left'],['water','Water goal'],['trades','Log trades on weekdays'],['reflection','Followed plan and reflection'],['sunday','Sunday weekly review'],['weigh','Weekly weigh-in'],['loss','Daily loss limit']];
 function ron(k){var o=state.goals.remindOff||{};return !o[k];}
 function renderRemindSet(){
   var box=document.getElementById('remindSet');box.innerHTML='';
@@ -581,10 +679,10 @@ function renderStrip(){
       var b=document.createElement("button");
       b.type="button";b.className="chip";
       var n=countFor(s);
-      b.setAttribute("aria-label",parse(s).toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})+", "+n+" of 6 done");
+      b.setAttribute("aria-label",parse(s).toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})+", "+n+" of "+NB()+" done");
       if(s===view)b.setAttribute("aria-current","true");
       if(s>t)b.disabled=true;
-      b.innerHTML='<span class="wd">'+WD[parse(s).getDay()]+'</span><span class="dn">'+parse(s).getDate()+'</span><span class="mini"><i style="width:'+(n/6*100)+'%"></i></span>';
+      b.innerHTML='<span class="wd">'+WD[parse(s).getDay()]+'</span><span class="dn">'+parse(s).getDate()+'</span><span class="mini"><i style="width:'+(n/NB()*100)+'%"></i></span>';
       b.addEventListener("click",function(){view=s;render();});
       st.appendChild(b);
     })(addDays(ws,i));
@@ -593,14 +691,14 @@ function renderStrip(){
 
 function renderStats(){
   var t=today(),s=0,c=t;
-  if(countFor(c)<4)c=addDays(c,-1);
-  while(countFor(c)>=4){s++;c=addDays(c,-1);}
+  if(countFor(c)<WIN())c=addDays(c,-1);
+  while(countFor(c)>=WIN()){s++;c=addDays(c,-1);}
   var ws=weekStart(view),tot=0,days=0;
   for(var i=0;i<7;i++){var k=addDays(ws,i);if(k<=t){tot+=countFor(k);days++;}}
   var pw=addDays(ws,-7),ptot=0;
   for(var j=0;j<7;j++){ptot+=countFor(addDays(pw,j));}
   document.getElementById("streak").textContent=s;
-  document.getElementById("wkTotal").textContent=tot+" of "+(days*6);
+  document.getElementById("wkTotal").textContent=tot+" of "+(days*NB());
   document.getElementById("wkAvg").textContent=(days?tot/days:0).toFixed(1);
   document.getElementById("prevAvg").textContent=(ptot/7).toFixed(1);
 }
@@ -611,15 +709,16 @@ function computeXP(){
   var keys={};Object.keys(state.days).forEach(function(k){keys[k]=1;});Object.keys(state.journal).forEach(function(k){keys[k]=1;});
   Object.keys(keys).sort().forEach(function(k){
     if(k>today_)return;
-    var d=0,c=countFor(k);d+=c*10;if(c===6)d+=20;
+    var d=0,c=countFor(k);d+=c*10;if(c===NB())d+=20;
     var day=state.days[k]||{};if((day.water||0)>=waterGoal())d+=15;
     var j=state.journal[k];
-    if(j){j.trades.forEach(function(t){if(t.plan==='yes')d+=15;});if(j.well&&j.mis&&j.tom)d+=10;}
+    if(j){j.trades.forEach(function(t){if(t.plan==='yes')d+=15;});if(j.well&&j.mis&&j.tom)d+=10;if(preDone(j))d+=10;}
     xp+=d;if(k===today_)todayXp=d;
   });
   var run=0,start=Object.keys(keys).sort()[0];
-  if(start){for(var s=start;s<=today_;s=addDays(s,1)){if(countFor(s)>=4){run++;if(run%7===0){xp+=50;if(s===today_)todayXp+=50;}}else run=0;}}
+  if(start){for(var s=start;s<=today_;s=addDays(s,1)){if(countFor(s)>=WIN()){run++;if(run%7===0){xp+=50;if(s===today_)todayXp+=50;}}else run=0;}}
   Object.keys(state.weeks).forEach(function(k){var w=state.weeks[k]||{};WEEKLY.forEach(function(x){if(w[x[0]])xp+=15;});});
+  var wkW={};weighIns().forEach(function(p){wkW[weekStart(p[0])]=1;});xp+=Object.keys(wkW).length*20;
   GOALS_W.forEach(function(x){if(state.goals[x[0]])xp+=200;});
   GOALS_T.forEach(function(x){if(state.goals[x[0]])xp+=150;});
   return {xp:xp,today:todayXp};
@@ -666,7 +765,7 @@ function renderRemind(){
   var anyHistory=Object.keys(state.days).some(function(k){return k<t&&(countFor(k)>0||state.days[k].water);})||Object.keys(state.journal).some(function(k){return k<t&&(state.journal[k].trades.length||state.journal[k].noTrade);});
   if(ron('yesterday')&&yEmpty&&anyHistory)items.push(['Nothing logged yesterday. Fill it in?','Open',go('daily',y)]);
   var left=DAILY.filter(function(x){return !day[x[0]]&&!(nt&&TRADE_ITEMS[x[0]])&&!(x[0]==='walk'&&exMin(t)>=15);});
-  if(ron('boxes')&&left.length)items.push([left.length+(left.length===1?' daily box left':' daily boxes left')+(left.length<=3?': '+left.map(function(x){return SHORTN[x[0]];}).join(', '):''),'Check',go('daily',t)]);
+  if(ron('boxes')&&left.length)items.push([left.length+(left.length===1?' daily box left':' daily boxes left')+(left.length<=3?': '+left.map(function(x){return SHORTN[x[0]]||x[1].toLowerCase();}).join(', '):''),'Check',go('daily',t)]);
   var w=day.water||0,g=waterGoal();
   if(ron('water')&&w<g)items.push([(g-w)+' more '+(g-w===1?'glass':'glasses')+' of water to reach your goal','Water',go('waterSec',t)]);
   var weekday=dow>=1&&dow<=5;
@@ -676,6 +775,8 @@ function renderRemind(){
     if(np)items.push(['Answer “followed plan” on '+np+(np===1?' trade':' trades'),'Journal',go('journalTop',t)]);
     if(!(j.well&&j.mis&&j.tom))items.push(['Fill in did well, mistake, and tomorrow’s adjustment','Journal',go('journalTop',t)]);
   }
+  if(ron('loss')&&!nt){var rsT=riskState(t);if(rsT.hit)items.unshift([rsT.text.split('. ')[0]+'. Done trading for today.','View',go('journalTop',t)]);}
+  if(ron('weigh')&&anyHistory&&!weighedThisWeek(t))items.push(['Weekly weigh-in due','Weigh in',go('wtTitle',t)]);
   if(ron('sunday')&&dow===0){var wk=state.weeks[weekStart(t)]||{};var wl=WEEKLY.filter(function(x){return !wk[x[0]];}).length;if(wl)items.push(['Sunday review: '+wl+(wl===1?' box':' boxes')+' left','Review',go('weekTitle',t)]);}
   var tbT=document.getElementById('tbToday');if(tbT){tbT.textContent=items.length;tbT.hidden=!items.length;tbT.setAttribute('aria-label',items.length+' reminders');}
   var box=document.getElementById('remindList'),sec=document.getElementById('remind');box.innerHTML='';
@@ -706,8 +807,9 @@ function updateScore(){
   renderStats();
   var n=countFor(view);
   document.getElementById("count").textContent=n;
-  document.getElementById("fill").style.width=(n/6*100)+"%";
-  var m=n===6?"Perfect day.":n>=4?"You’re winning this day.":n>0?"Good start.":"A missed day just means you start the next one fresh.";
+  document.getElementById("fill").style.width=(n/NB()*100)+"%";
+  document.getElementById("countOf").textContent=NB();document.getElementById("streakLbl").textContent="day streak ("+WIN()+"+ boxes)";
+  var m=n===NB()?"Perfect day.":n>=WIN()?"You’re winning this day.":n>0?"Good start.":"A missed day just means you start the next one fresh.";
   document.getElementById("msg").textContent=m;
 }
 
@@ -725,7 +827,7 @@ function cloudDocs(){
   var out={},months={};
   function m(k){var id='m-'+k.slice(0,7);if(!months[id])months[id]={days:{},journal:{}};return months[id];}
   Object.keys(state.days).forEach(function(k){if(hasContent(state.days[k]))m(k).days[k]=state.days[k];});
-  Object.keys(state.journal).forEach(function(k){var j=state.journal[k];if(j&&(j.trades.length||j.noTrade||j.ntReason||j.mb||j.ma||j.well||j.mis||j.tom))m(k).journal[k]=j;});
+  Object.keys(state.journal).forEach(function(k){var j=state.journal[k];if(j&&(j.trades.length||j.pre||j.noTrade||j.ntReason||j.mb||j.ma||j.well||j.mis||j.tom))m(k).journal[k]=j;});
   Object.keys(months).forEach(function(id){out[id]=months[id];});
   var wk={};Object.keys(state.weeks).forEach(function(k){if(hasContent(state.weeks[k]))wk[k]=state.weeks[k];});
   out['weeks']={weeks:wk};
@@ -886,6 +988,297 @@ document.getElementById('nTest').addEventListener('click',async function(){
   catch(e){nMsg('Could not reach the reminder service.');}
 });
 
+/* ---------- editable checklist ---------- */
+function ckItems(){var c=state.goals.checklist;return (Array.isArray(c)&&c.length)?c:DEFAULT_DAILY.map(function(x){return {id:x[0],label:x[1]};});}
+function ckSave(list){state.goals.checklist=list;save();render();}
+var CK_NOTE={walk:' (checks itself from exercise)',plan:' (auto on no trade days)',log:' (auto on no trade days)'};
+function renderChecklist(){
+  var list=ckItems().map(function(x){return {id:x.id,label:x.label};}),box=document.getElementById('ckList');box.innerHTML='';
+  list.forEach(function(it,i){
+    var r=document.createElement('div');r.className='ckrow';
+    var inp=document.createElement('input');inp.value=it.label;inp.setAttribute('aria-label','Daily box '+(i+1));
+    inp.addEventListener('change',function(){var v=inp.value.trim();if(!v){inp.value=it.label;return;}list[i].label=v;ckSave(list);});
+    var up=document.createElement('button');up.type='button';up.textContent='↑';up.setAttribute('aria-label','Move up');up.disabled=i===0;
+    up.addEventListener('click',function(){var x=list.splice(i,1)[0];list.splice(i-1,0,x);ckSave(list);});
+    var dn=document.createElement('button');dn.type='button';dn.textContent='↓';dn.setAttribute('aria-label','Move down');dn.disabled=i===list.length-1;
+    dn.addEventListener('click',function(){var x=list.splice(i,1)[0];list.splice(i+1,0,x);ckSave(list);});
+    var del=document.createElement('button');del.type='button';del.textContent='×';del.setAttribute('aria-label','Remove '+it.label);
+    del.addEventListener('click',function(){if(list.length<=1){document.getElementById('ckMsg').textContent='Keep at least one daily box.';return;}list.splice(i,1);ckSave(list);});
+    r.appendChild(inp);r.appendChild(up);r.appendChild(dn);r.appendChild(del);box.appendChild(r);
+    if(CK_NOTE[it.id]){var n=document.createElement('p');n.className='msg';n.style.margin='-2px 0 8px';n.textContent=it.label.split(' (')[0]+CK_NOTE[it.id];box.appendChild(n);}
+  });
+}
+document.getElementById('ckAdd').addEventListener('click',function(){
+  var el=document.getElementById('ckNew'),v=el.value.trim(),list=ckItems().map(function(x){return {id:x.id,label:x.label};});
+  if(!v){document.getElementById('ckMsg').textContent='Type the new habit first.';return;}
+  if(list.length>=12){document.getElementById('ckMsg').textContent='You can have up to 12 daily boxes.';return;}
+  list.push({id:'c'+Date.now().toString(36),label:v});el.value='';document.getElementById('ckMsg').textContent='Added.';ckSave(list);
+});
+document.getElementById('ckReset').addEventListener('click',function(){delete state.goals.checklist;document.getElementById('ckMsg').textContent='Back to the original six.';save();render();});
+
+/* ---------- weight ---------- */
+var WT_CPS=[12,25,38,50];
+function weighIns(){return Object.keys(state.days).filter(function(k){var w=state.days[k]&&state.days[k].weight;return typeof w==='number'&&w>0;}).sort().map(function(k){return [k,state.days[k].weight];});}
+function wtStart(){var s=state.goals.startWeight;if(typeof s==='number'&&s>0)return s;var w=weighIns();return w.length?w[0][1]:null;}
+function renderWeight(){
+  var day=state.days[view]||{},inp=document.getElementById('wtIn');
+  document.getElementById('wtDayLbl').textContent='Weigh-in for '+parse(view).toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})+'. Once a week, same time of day, is enough.';
+  if(document.activeElement!==inp)inp.value=day.weight?String(day.weight):'';
+  var st=document.getElementById('wtStart');if(document.activeElement!==st)st.value=state.goals.startWeight?String(state.goals.startWeight):'';
+  var w=weighIns(),start=wtStart(),msg=document.getElementById('wtMsg'),chart=document.getElementById('wtChart');
+  if(!w.length||!start){msg.textContent='Log your first weigh-in to start your trend.';chart.innerHTML='';return;}
+  var latest=w[w.length-1][1],down=Math.round((start-latest)*10)/10,next=WT_CPS.filter(function(c){return c>down;})[0];
+  var wtNew=false;WT_CPS.forEach(function(c,i){if(down>=c&&!state.goals['g-w'+(i+1)]){state.goals['g-w'+(i+1)]=true;wtNew=true;}});
+  if(wtNew){save();renderGoals();renderLevel();}
+  msg.textContent=(down>0?'Down '+down+' lbs since you started.':down<0?'Up '+Math.abs(down)+' lbs since you started. Keep going, trends matter more than single weigh-ins.':'Same as your starting weight.')+(next?' '+(Math.round((next-down)*10)/10)+' lbs to your next checkpoint ('+next+' down, '+(start-next)+' lbs).':' You reached all four checkpoints!');
+  if(w.length<2){chart.innerHTML='<p class="msg" style="margin:0">Your chart appears after your second weigh-in.</p>';return;}
+  var pts=w.slice(-52),W=320,H=170,L=34,R=8,T=8,B=22;
+  var t0=parse(pts[0][0]).getTime(),t1=parse(pts[pts.length-1][0]).getTime();if(t1===t0)t1=t0+864e5;
+  var vals=pts.map(function(p){return p[1];}),lines=[start].concat(WT_CPS.map(function(c){return start-c;}));
+  var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals.concat([start]));
+  var shown=lines.filter(function(v){return v>=lo-15&&v<=hi+1;});lo=Math.min(lo,Math.min.apply(null,shown))-2;hi=hi+2;
+  function x(d){return L+(parse(d).getTime()-t0)/(t1-t0)*(W-L-R);}function y(v){return T+(hi-v)/(hi-lo)*(H-T-B);}
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Weight trend chart" style="display:block">';
+  shown.forEach(function(v,i){var lbl=v===start?'start':('−'+(start-v));svg+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'" stroke="var(--line)" stroke-dasharray="4 4"/><text x="'+(L-4)+'" y="'+(y(v)+4).toFixed(1)+'" font-size="10" text-anchor="end" fill="var(--muted)">'+lbl+'</text>';});
+  svg+='<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" points="'+pts.map(function(p){return x(p[0]).toFixed(1)+','+y(p[1]).toFixed(1);}).join(' ')+'"/>';
+  pts.forEach(function(p){svg+='<circle cx="'+x(p[0]).toFixed(1)+'" cy="'+y(p[1]).toFixed(1)+'" r="3" fill="var(--accent)"/>';});
+  var f=parse(pts[0][0]).toLocaleDateString(undefined,{month:'short',day:'numeric'}),l=parse(pts[pts.length-1][0]).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  svg+='<text x="'+L+'" y="'+(H-6)+'" font-size="10" fill="var(--muted)">'+f+'</text><text x="'+(W-R)+'" y="'+(H-6)+'" font-size="10" text-anchor="end" fill="var(--muted)">'+l+'</text></svg>';
+  chart.innerHTML=svg;
+}
+document.getElementById('wtSave').addEventListener('click',function(){
+  var v=parseFloat(document.getElementById('wtIn').value),day=state.days[view]||(state.days[view]={});
+  if(!(v>50&&v<1000)){if(!document.getElementById('wtIn').value.trim()){delete day.weight;save();render();return;}document.getElementById('wtMsg').textContent='Enter your weight in pounds, like 398.4.';return;}
+  day.weight=Math.round(v*10)/10;if(!state.goals.startWeight&&!weighIns().filter(function(p){return p[0]!==view;}).length)state.goals.startWeight=day.weight;
+  save();render();
+});
+document.getElementById('wtStart').addEventListener('change',function(){var v=parseFloat(this.value);if(v>50&&v<1000)state.goals.startWeight=Math.round(v*10)/10;else delete state.goals.startWeight;save();render();});
+function weighedThisWeek(t){for(var i=0;i<7;i++){var d=state.days[addDays(t,-i)];if(d&&d.weight)return true;}return false;}
+
+/* ---------- daily limits ---------- */
+function risk(){var r=state.goals.risk;if(!r||typeof r!=='object')r=state.goals.risk={};return r;}
+function riskState(s){
+  var r=risk(),j=state.journal[s],n=j?j.trades.length:0,d=dayPnl(s),out={hit:false,warn:false,text:''};
+  if(r.maxLoss>0&&d<=-r.maxLoss){out.hit=true;out.text='Daily loss limit hit ('+money(d)+' of your $'+r.maxLoss+' limit). You’re done trading for today. Protect the account.';}
+  else if(r.maxTrades>0&&n>=r.maxTrades){out.hit=true;out.text='You’ve taken your max of '+r.maxTrades+(r.maxTrades===1?' trade':' trades')+' today. Done for the day.';}
+  else if(r.maxLoss>0&&d<=-0.75*r.maxLoss){out.warn=true;out.text='You’re at '+Math.round(-d/r.maxLoss*100)+'% of your daily loss limit. Only A+ setups, or call it a day.';}
+  return out;
+}
+function renderRisk(){
+  var b=document.getElementById('riskBanner'),rs=riskState(view);b.innerHTML='';
+  if(isNoTrade(view)||(!rs.hit&&!rs.warn))return;
+  var p=document.createElement('div');p.className='risk'+(rs.hit?'':' warn');p.textContent=rs.text;b.appendChild(p);
+}
+function renderLimits(){
+  var r=risk(),a=document.getElementById('limLoss'),c=document.getElementById('limTrades');
+  if(document.activeElement!==a)a.value=r.maxLoss?String(r.maxLoss):'';
+  if(document.activeElement!==c)c.value=r.maxTrades?String(r.maxTrades):'';
+}
+document.getElementById('limLoss').addEventListener('change',function(){var v=parseFloat(this.value);if(v>0)risk().maxLoss=Math.round(v);else delete risk().maxLoss;save();renderRisk();renderRemind();});
+document.getElementById('limTrades').addEventListener('change',function(){var v=parseInt(this.value,10);if(v>0)risk().maxTrades=v;else delete risk().maxTrades;save();renderRisk();renderRemind();});
+
+/* ---------- pre-trade check ---------- */
+var PRE=[['sleep','Slept at least 6 hours'],['plan','Plan and risk limit written'],['news','Checked news and events'],['calm','Feeling calm and focused']];
+function preDone(j){return !!(j&&j.pre&&PRE.every(function(p){return j.pre[p[0]];}));}
+function renderPre(){
+  var e=jEntry(),card=document.getElementById('preCard'),list=document.getElementById('preList');
+  card.style.display=e.noTrade?'none':'block';list.innerHTML='';
+  if(!e.pre)e.pre={};
+  PRE.forEach(function(p){
+    var row=document.createElement('div');row.className='pre';var l=document.createElement('span');l.textContent=p[1];row.appendChild(l);
+    row.appendChild(seg([['yes','Yes'],['no','No']],e.pre[p[0]],function(v){e.pre[p[0]]=v;
+      if(p[0]==='plan'&&v==='yes'){var day=state.days[view]||(state.days[view]={});if(!day.plan){day.plan=true;}}
+      save();preMessage();renderLevel();if(p[0]==='plan')render();}));
+    list.appendChild(row);
+  });
+  preMessage();
+}
+var preNag=false;
+function preMessage(){
+  var e=jEntry(),m=document.getElementById('preMsg'),pre=e.pre||{};
+  var left=PRE.filter(function(p){return !pre[p[0]];}).length,no=PRE.filter(function(p){return pre[p[0]]==='no';}).length;
+  if(preNag&&left){preNag=false;m.className='msg bad';m.textContent='Do your pre-trade check first. It takes ten seconds.';return;}
+  preNag=false;
+  m.className='msg'+(no?' bad':'');
+  m.textContent=left?(left+(left===1?' check left.':' checks left.')+(no?' One answer was no already, so plan to trade smaller today.':'')):no?'One or more checks were no. Trade half size or fewer trades today, or sit out.':'All clear. Trade your plan.';
+}
+
+/* ---------- payout progress ---------- */
+function accounts(){var a=state.goals.accounts;if(!Array.isArray(a))a=state.goals.accounts=[];return a;}
+function acctStats(a){
+  var key=(a.name||'').trim().toLowerCase(),since=a.since||'',days={};
+  Object.keys(state.journal).forEach(function(k){if(since&&k<since)return;state.journal[k].trades.forEach(function(t){if((t.acct||'').trim().toLowerCase()!==key)return;days[k]=(days[k]||0)+tradePnl(t);});});
+  var ks=Object.keys(days),profit=0,best=0;ks.forEach(function(k){profit+=days[k];if(days[k]>best)best=days[k];});
+  return {profit:profit,days:ks.length,best:best};
+}
+var ppEditing={};
+function renderPayout(){
+  var list=document.getElementById('ppList');list.innerHTML='';
+  var accts=accounts();
+  if(!accts.length){var p=document.createElement('p');p.className='msg';p.textContent='Add an account and its payout rules to track how close you are.';list.appendChild(p);}
+  accts.forEach(function(a,i){
+    var s=acctStats(a),c=document.createElement('div');
+    var tgt=+a.target||0,minD=+a.minDays||0,lim=+a.consistency||0;
+    var profitOk=tgt?s.profit>=tgt:false,daysOk=minD?s.days>=minD:true;
+    var pct=s.profit>0?s.best/s.profit*100:0,consOk=!lim||(s.profit>0&&pct<=lim);
+    var ready=tgt>0&&profitOk&&daysOk&&consOk;
+    c.className='pp'+(ready?' ready':'')+(ppEditing[i]?' editing':'');
+    var h=document.createElement('div');h.className='pphead';h.innerHTML='<b></b><span class="rwtag"></span>';h.querySelector('b').textContent=a.name||'Unnamed account';
+    var tag=h.querySelector('.rwtag');tag.textContent=ready?'Ready for payout':tgt?'Not yet':'Add a target';if(ready){tag.style.background='var(--accent)';tag.style.color='var(--accent-ink)';tag.style.borderColor='var(--accent)';}
+    c.appendChild(h);
+    if(tgt){var bar=document.createElement('div');bar.className='bar';bar.innerHTML='<div class="fill"></div>';bar.firstChild.style.width=Math.max(0,Math.min(100,s.profit/tgt*100))+'%';c.appendChild(bar);}
+    function row(label,val,ok){var r=document.createElement('div');r.className='pprow';r.innerHTML='<span></span><span></span>';r.firstChild.textContent=label;r.lastChild.textContent=val;if(ok!==undefined)r.lastChild.className=ok?'ok':'bad';c.appendChild(r);}
+    row('Profit',money(s.profit)+(tgt?' of $'+tgt.toLocaleString():''),tgt?profitOk:undefined);
+    if(tgt&&!profitOk)row('Still needed','$'+Math.round(tgt-s.profit).toLocaleString());
+    row('Trading days',s.days+(minD?' of '+minD:''),minD?daysOk:undefined);
+    if(lim)row('Best day vs profit',s.profit>0?Math.round(pct)+'% (limit '+lim+'%)':'Needs profit first',s.profit>0?consOk:false);
+    if(lim&&s.profit>0&&!consOk)row('To fix it','Grow total profit to $'+Math.ceil(s.best/lim*100).toLocaleString());
+    if(a.since)row('Counting since',parse(a.since).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}));
+    var ed=document.createElement('div');ed.className='ppedit';
+    function f(label,val,ph,mode,type,cb){var d=document.createElement('div');d.className='fld';var sp=document.createElement('span');sp.textContent=label;var inp=document.createElement('input');inp.type=type||'text';if(mode)inp.setAttribute('inputmode',mode);inp.placeholder=ph;inp.value=val==null?'':val;inp.addEventListener('change',function(){cb(inp.value);save();renderPayout();});d.appendChild(sp);d.appendChild(inp);return d;}
+    ed.appendChild(f('Account name (match your journal)',a.name,'Midgard 50K','','text',function(v){a.name=v.trim();}));
+    var g=document.createElement('div');g.className='g2';
+    g.appendChild(f('Profit target ($)',a.target,'3000','decimal','text',function(v){var n=parseFloat(v);if(n>0)a.target=Math.round(n);else delete a.target;}));
+    g.appendChild(f('Minimum trading days',a.minDays,'5','numeric','text',function(v){var n=parseInt(v,10);if(n>0)a.minDays=n;else delete a.minDays;}));
+    g.appendChild(f('Consistency limit (%)',a.consistency,'40','decimal','text',function(v){var n=parseFloat(v);if(n>0&&n<=100)a.consistency=n;else delete a.consistency;}));
+    g.appendChild(f('Count trades since',a.since,'','','date',function(v){if(v)a.since=v;else delete a.since;}));
+    ed.appendChild(g);
+    var hint=document.createElement('p');hint.className='msg';hint.textContent='After a payout, set Count trades since to the next day so progress starts fresh.';ed.appendChild(hint);
+    var dl=document.createElement('button');dl.type='button';dl.className='del';dl.style.marginTop='6px';dl.textContent='Remove account';
+    dl.addEventListener('click',function(){accts.splice(i,1);ppEditing={};save();renderPayout();});ed.appendChild(dl);
+    c.appendChild(ed);
+    var tb=document.createElement('div');tb.className='rwbtns';var eb=document.createElement('button');eb.type='button';eb.textContent=ppEditing[i]?'Done':'Edit rules';
+    eb.addEventListener('click',function(){ppEditing[i]=!ppEditing[i];renderPayout();});tb.appendChild(eb);c.appendChild(tb);
+    list.appendChild(c);
+  });
+}
+document.getElementById('ppAdd').addEventListener('click',function(){var a=accounts();if(a.length>=10)return;a.push({name:a.length?'':'Midgard 50K'});ppEditing={};ppEditing[a.length-1]=true;save();renderPayout();});
+
+/* ---------- insights ---------- */
+var inRange='30';
+function tradesInRange(){
+  var out=[],from=inRange==='all'?'':addDays(today(),-(parseInt(inRange,10)-1));
+  Object.keys(state.journal).sort().forEach(function(k){if(k>today()||(from&&k<from))return;state.journal[k].trades.forEach(function(t){out.push({d:k,t:t});});});
+  return out;
+}
+function timeBucket(tm){if(!tm)return 'No time logged';var p=tm.split(':'),m=(+p[0])*60+(+p[1]);if(isNaN(m))return 'No time logged';
+  if(m<570)return 'Before 9:30';if(m<600)return '9:30 to 10:00';if(m<660)return '10:00 to 11:00';if(m<720)return '11:00 to 12:00';if(m<840)return '12:00 to 2:00';return 'After 2:00';}
+function renderInsights(){
+  var rg=document.getElementById('inRange');rg.innerHTML='';
+  rg.appendChild(seg([['30','30 days'],['90','90 days'],['all','All time']],inRange,function(v){inRange=v;renderInsights();}));
+  var body=document.getElementById('inBody');body.innerHTML='';
+  var tr=tradesInRange().filter(function(x){return !isNaN(parseFloat(x.t.amt));});
+  if(!tr.length){var p=document.createElement('p');p.className='msg';p.textContent='Log a few trades with amounts to see what is working.';body.appendChild(p);return;}
+  var wins=tr.filter(function(x){return tradePnl(x.t)>0;}),losses=tr.filter(function(x){return tradePnl(x.t)<0;});
+  var tot=tr.reduce(function(n,x){return n+tradePnl(x.t);},0);
+  var aw=wins.length?wins.reduce(function(n,x){return n+tradePnl(x.t);},0)/wins.length:0,al=losses.length?losses.reduce(function(n,x){return n+tradePnl(x.t);},0)/losses.length:0;
+  var sum=document.createElement('p');sum.className='msg';sum.style.marginTop='0';
+  sum.textContent=tr.length+(tr.length===1?' trade':' trades')+', '+Math.round(wins.length/tr.length*100)+'% wins, '+money(tot)+' total. Average win '+money(aw)+', average loss '+money(al)+'.';
+  body.appendChild(sum);
+  function group(title,fn){
+    var g={},order=[];tr.forEach(function(x){var lbl=fn(x.t),key=lbl.toLowerCase();if(!g[key]){g[key]={l:lbl,n:0,w:0,p:0};order.push(key);}g[key].n++;var v=tradePnl(x.t);if(v>0)g[key].w++;g[key].p+=v;});
+    var rows=order.map(function(k){return g[k];}).sort(function(a,b){return b.n-a.n;}).slice(0,8);
+    var h=document.createElement('p');h.style.margin='4px 0';h.innerHTML='<b></b>';h.firstChild.textContent=title;body.appendChild(h);
+    var t=document.createElement('table');t.className='itbl';t.innerHTML='<thead><tr><th scope="col">Group</th><th scope="col">Trades</th><th scope="col">Win %</th><th scope="col">Result</th></tr></thead><tbody></tbody>';
+    rows.forEach(function(r){var tr2=document.createElement('tr');[r.l,String(r.n),Math.round(r.w/r.n*100)+'%',money(r.p)].forEach(function(v,i){var td=document.createElement('td');td.textContent=v;if(i===3)td.className=pnlClass(r.p);tr2.appendChild(td);});t.tBodies[0].appendChild(tr2);});
+    body.appendChild(t);
+  }
+  group('By setup',function(t){return (t.setup||'').trim()||'No setup written';});
+  group('By ATM setting',function(t){return (t.atm||'').trim()||'No ATM set';});
+  group('By time of day',function(t){return timeBucket(t.time);});
+  group('By plan',function(t){return t.plan==='yes'?'Followed plan':t.plan==='no'?'Broke plan':'Not answered';});
+  group('By direction',function(t){return t.dir==='long'?'Long':t.dir==='short'?'Short':'Not set';});
+}
+
+/* ---------- charts ---------- */
+var chRangeV='4',chAcct='all';
+function chStart(){
+  var t=today();if(chRangeV==='4')return addDays(t,-27);if(chRangeV==='12')return addDays(t,-83);
+  var ks=Object.keys(state.days).concat(Object.keys(state.journal)).filter(function(k){return k<=t;}).sort();return ks[0]||addDays(t,-27);
+}
+function chDays(){var out=[],s=chStart(),t=today();for(var d=s;d<=t;d=addDays(d,1))out.push(d);return out;}
+function chWeeks(){var out=[],s=weekStart(chStart()),t=today();for(var w=s;w<=t;w=addDays(w,7))out.push(w);return out;}
+function shortD(k){return parse(k).toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function svgBars(vals,labels,o){
+  o=o||{};var W=320,H=150,L=30,R=6,T=10,B=22,n=vals.length||1;
+  var max=o.max||Math.max.apply(null,vals.concat([1,o.goal?o.goal*1.1:0]));if(!(max>0))max=1;
+  var bw=(W-L-R)/n,gap=Math.min(4,bw*0.25);
+  var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.label||'Bar chart')+'">';
+  [0,0.5,1].forEach(function(f){var yv=T+(1-f)*(H-T-B);s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yv.toFixed(1)+'" y2="'+yv.toFixed(1)+'" stroke="var(--line)"/><text x="'+(L-4)+'" y="'+(yv+4).toFixed(1)+'" font-size="10" text-anchor="end" fill="var(--muted)">'+esc(o.fmt?o.fmt(max*f):Math.round(max*f))+'</text>';});
+  if(o.goal>0&&o.goal<=max){var gy=T+(1-o.goal/max)*(H-T-B);s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+gy.toFixed(1)+'" y2="'+gy.toFixed(1)+'" stroke="var(--accent)" stroke-dasharray="4 3"/>';}
+  vals.forEach(function(v,i){var h=Math.max(0,Math.min(1,v/max))*(H-T-B),x=L+i*bw+gap/2;
+    s+='<rect x="'+x.toFixed(1)+'" y="'+(H-B-h).toFixed(1)+'" width="'+Math.max(1,bw-gap).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" fill="var(--accent)" opacity="'+(v>0?1:0.25)+'"><title>'+esc(labels[i]+': '+(o.fmt?o.fmt(v):v))+'</title></rect>';});
+  var li=n>1?[0,Math.floor((n-1)/2),n-1]:[0];li.forEach(function(i,k){var anchor=k===0?'start':k===li.length-1?'end':'middle',x=k===0?L:k===li.length-1?W-R:L+(i+0.5)*bw;s+='<text x="'+x.toFixed(1)+'" y="'+(H-6)+'" font-size="10" text-anchor="'+anchor+'" fill="var(--muted)">'+esc(labels[i])+'</text>';});
+  return s+'</svg>';
+}
+function svgLine(pts,o){
+  o=o||{};var W=320,H=160,L=40,R=8,T=10,B=22;
+  if(pts.length<2)return '<p class="msg" style="margin:0">'+esc(o.empty||'Not enough data yet.')+'</p>';
+  var t0=parse(pts[0][0]).getTime(),t1=parse(pts[pts.length-1][0]).getTime();if(t1===t0)t1=t0+864e5;
+  var ys=pts.map(function(p){return p[1];}).concat(o.refs||[]);if(o.zero)ys.push(0);
+  var lo=Math.min.apply(null,ys),hi=Math.max.apply(null,ys);if(hi===lo){hi+=1;lo-=1;}var pad=(hi-lo)*0.08;lo-=pad;hi+=pad;
+  function x(d){return L+(parse(d).getTime()-t0)/(t1-t0)*(W-L-R);}function y(v){return T+(hi-v)/(hi-lo)*(H-T-B);}
+  var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.label||'Line chart')+'">';
+  [lo+pad,(lo+hi)/2,hi-pad].forEach(function(v){s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'" stroke="var(--line)"/><text x="'+(L-4)+'" y="'+(y(v)+4).toFixed(1)+'" font-size="10" text-anchor="end" fill="var(--muted)">'+esc(o.fmt?o.fmt(v):Math.round(v))+'</text>';});
+  (o.refs||[]).forEach(function(v){s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'" stroke="var(--muted)" stroke-dasharray="4 4" opacity="0.6"/>';});
+  if(o.zero){s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0).toFixed(1)+'" y2="'+y(0).toFixed(1)+'" stroke="var(--muted)" stroke-width="1.2"/>';}
+  s+='<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="'+pts.map(function(p){return x(p[0]).toFixed(1)+','+y(p[1]).toFixed(1);}).join(' ')+'"/>';
+  if(pts.length<=40)pts.forEach(function(p){s+='<circle cx="'+x(p[0]).toFixed(1)+'" cy="'+y(p[1]).toFixed(1)+'" r="2.8" fill="var(--accent)"><title>'+esc(shortD(p[0])+': '+(o.fmt?o.fmt(p[1]):p[1]))+'</title></circle>';});
+  s+='<text x="'+L+'" y="'+(H-6)+'" font-size="10" fill="var(--muted)">'+esc(shortD(pts[0][0]))+'</text><text x="'+(W-R)+'" y="'+(H-6)+'" font-size="10" text-anchor="end" fill="var(--muted)">'+esc(shortD(pts[pts.length-1][0]))+'</text>';
+  return s+'</svg>';
+}
+function chMoney(v){var r=Math.round(v);return (r<0?'−':'')+'$'+Math.abs(r).toLocaleString();}
+function renderCharts(){
+  var rg=document.getElementById('chRange');if(!rg)return;rg.innerHTML='';
+  rg.appendChild(seg([['4','4 weeks'],['12','12 weeks'],['all','All time']],chRangeV,function(v){chRangeV=v;renderCharts();}));
+  var days=chDays(),weeks=chWeeks(),t=today(),N=NB();
+  /* 1. boxes */
+  var byDay=days.length>84;var bv,bl;
+  if(!byDay){bv=days.map(countFor);bl=days.map(shortD);}else{bv=weeks.map(function(w){var s=0,c=0;for(var i=0;i<7;i++){var k=addDays(w,i);if(k<=t&&k>=days[0]){s+=countFor(k);c++;}}return c?Math.round(s/c*10)/10:0;});bl=weeks.map(shortD);}
+  document.getElementById('chBoxes').innerHTML=svgBars(bv,bl,{max:N,goal:WIN(),label:'Daily boxes completed'});
+  var tot=days.reduce(function(n,k){return n+countFor(k);},0),avg=days.length?tot/days.length:0,wd=[0,0,0,0,0,0,0],wc=[0,0,0,0,0,0,0];
+  days.forEach(function(k){var g=parse(k).getDay();wd[g]+=countFor(k);wc[g]++;});
+  var names=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],worst=-1,wv=1e9;for(var i=0;i<7;i++){if(wc[i]){var a=wd[i]/wc[i];if(a<wv){wv=a;worst=i;}}}
+  document.getElementById('chBoxesMsg').textContent='Average '+avg.toFixed(1)+' of '+N+' per day'+(byDay?' (bars are weekly averages)':'')+'.'+(tot&&worst>=0&&days.length>=14?' Weakest day: '+names[worst]+'.':'')+' Dashed line is your '+WIN()+' box streak target.';
+  /* 2. weight */
+  var w=weighIns().filter(function(p){return p[0]>=days[0];}),start=wtStart();
+  var refs=start?[start].concat(WT_CPS.map(function(c){return start-c;})):[];
+  if(w.length){var lo=Math.min.apply(null,w.map(function(p){return p[1];})),hi=Math.max.apply(null,w.map(function(p){return p[1];}));refs=refs.filter(function(v){return v>=lo-6&&v<=hi+6;});}
+  document.getElementById('chWeight').innerHTML=svgLine(w,{refs:refs,fmt:function(v){return Math.round(v);},label:'Weight trend',empty:'Log at least two weigh-ins in this range to see your trend.'});
+  document.getElementById('chWeightMsg').textContent=w.length>=2?('Change in this range: '+((w[w.length-1][1]-w[0][1])>0?'+':(w[w.length-1][1]-w[0][1])<0?'\u2212':'')+Math.abs(Math.round((w[w.length-1][1]-w[0][1])*10)/10)+' lbs. Dashed lines are your checkpoints.'):'';
+  /* 3. equity */
+  var accts={};Object.keys(state.journal).forEach(function(k){state.journal[k].trades.forEach(function(x){var n=(x.acct||'').trim();if(n)accts[n.toLowerCase()]=n;});});
+  var al=[['all','All accounts']].concat(Object.keys(accts).sort().map(function(k){return [k,accts[k]];}));
+  if(!al.some(function(a){return a[0]===chAcct;}))chAcct='all';
+  var ea=document.getElementById('chEqAcct');ea.innerHTML='';
+  if(al.length>2){var sel=document.createElement('select');sel.setAttribute('aria-label','Account');sel.style.cssText='width:100%;min-height:44px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit';
+    al.forEach(function(a){var o=document.createElement('option');o.value=a[0];o.textContent=a[1];if(a[0]===chAcct)o.selected=true;sel.appendChild(o);});
+    sel.addEventListener('change',function(){chAcct=sel.value;renderCharts();});ea.appendChild(sel);}
+  var run=0,eq=[],peak=0,dd=0,tradesN=0;
+  days.forEach(function(k){var j=state.journal[k];if(!j||!j.trades.length)return;var dsum=0,had=false;
+    j.trades.forEach(function(x){if(chAcct!=='all'&&(x.acct||'').trim().toLowerCase()!==chAcct)return;if(isNaN(parseFloat(x.amt)))return;dsum+=tradePnl(x);had=true;tradesN++;});
+    if(!had)return;if(!eq.length)eq.push([addDays(k,-1),0]);run+=dsum;eq.push([k,run]);if(run>peak)peak=run;if(peak-run>dd)dd=peak-run;});
+  document.getElementById('chEq').innerHTML=svgLine(eq,{zero:true,fmt:chMoney,label:'Trading equity curve',empty:'Log trades with amounts to see your equity curve.'});
+  document.getElementById('chEqMsg').textContent=tradesN?(tradesN+(tradesN===1?' trade':' trades')+', '+chMoney(run)+' total in this range. Biggest drop from a high: '+chMoney(-dd)+'.'):'';
+  /* 4. plan followed */
+  var pv=[],pl=[],py=0,pn=0;
+  weeks.forEach(function(wk){var y=0,n=0;for(var i=0;i<7;i++){var k=addDays(wk,i),j=state.journal[k];if(k<days[0]||k>t||!j)continue;j.trades.forEach(function(x){if(x.plan==='yes')y++;if(x.plan==='yes'||x.plan==='no')n++;});}
+    pv.push(n?Math.round(y/n*100):0);pl.push(shortD(wk));py+=y;pn+=n;});
+  document.getElementById('chPlan').innerHTML=pn?svgBars(pv,pl,{max:100,goal:90,fmt:function(v){return Math.round(v)+'%';},label:'Plan followed by week'}):'<p class="msg" style="margin:0">Answer “followed plan” on your trades to see this chart.</p>';
+  document.getElementById('chPlanMsg').textContent=pn?('Followed your plan on '+Math.round(py/pn*100)+'% of '+pn+' trades. Dashed line is 90%.'):'';
+  /* 5. exercise and water */
+  var ev=[],wv2=[],wl=[],etot=0,strength=0;
+  weeks.forEach(function(wk){var m=0,wsum=0,wc2=0;for(var i=0;i<7;i++){var k=addDays(wk,i);if(k<days[0]||k>t)continue;m+=exMin(k);var dd2=state.days[k]||{};wsum+=dd2.water||0;wc2++;if(dd2.ex)dd2.ex.forEach(function(e){if(e.type==='Strength')strength++;});}
+    ev.push(m);wv2.push(wc2?Math.round(wsum/wc2*10)/10:0);wl.push(shortD(wk));etot+=m;});
+  document.getElementById('chEx').innerHTML=svgBars(ev,wl,{goal:105,label:'Exercise minutes by week'});
+  document.getElementById('chExMsg').textContent=etot+' minutes total, '+strength+(strength===1?' strength session':' strength sessions')+'. Dashed line is 105 minutes, which is 15 minutes a day.';
+  var g=waterGoal();
+  document.getElementById('chWater').innerHTML=svgBars(wv2,wl,{max:Math.max(g,Math.max.apply(null,wv2.concat([1]))),goal:g,label:'Average water per day by week'});
+  var wAvg=wv2.length?wv2.reduce(function(a,b){return a+b;},0)/wv2.length:0;
+  document.getElementById('chWaterMsg').textContent='Averaging '+wAvg.toFixed(1)+' glasses a day. Dashed line is your goal of '+g+'.';
+}
+
 var bkPending=null;
 function bkMsg(t){document.getElementById('bkMsg').textContent=t;}
 function backupText(){return JSON.stringify({app:'daily-tracker',version:1,exported:new Date().toISOString(),state:state});}
@@ -910,7 +1303,7 @@ document.getElementById('bkRestore').addEventListener('click',function(){
 
 document.getElementById('bkDownload').addEventListener('click',function(){
   var blob=new Blob([backupText()],{type:'application/json'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tracker-backup-'+today()+'.json';
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='daily-edge-backup-'+today()+'.json';
   document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
   try{localStorage.setItem('tracker-last-backup',today());}catch(e){}
   bkMsg('Backup downloaded. It is in your Downloads folder.');
@@ -931,12 +1324,17 @@ var TAB_KEY='tracker-tab';
 function showTab(name){
   document.querySelectorAll('.tab').forEach(function(t){t.hidden=t.getAttribute('data-tab')!==name;});
   document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-selected',b.getAttribute('data-go')===name?'true':'false');});
-  document.getElementById('dayHeader').hidden=(name==='settings');
+  document.getElementById('dayHeader').hidden=(name==='settings'||name==='charts');
+  if(name==='charts'&&typeof renderCharts==='function')renderCharts();
   try{localStorage.setItem(TAB_KEY,name);}catch(e){}
 }
 document.querySelectorAll('.tabbar button').forEach(function(b){b.addEventListener('click',function(){showTab(b.getAttribute('data-go'));window.scrollTo(0,0);});});
 (function(){var t='today';try{t=localStorage.getItem(TAB_KEY)||'today';}catch(e){}if(!document.querySelector('.tab[data-tab="'+t+'"]'))t='today';showTab(t);})();
 load();view=today();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}render();startSync();
+(function(){var sp=document.getElementById('splash');if(!sp)return;var done=false;
+  function hide(){if(done)return;done=true;sp.classList.add('gone');setTimeout(function(){sp.style.display='none';},500);}
+  sp.addEventListener('click',hide);setTimeout(hide,1900);})();
+
 </script>
 </body>
 </html>

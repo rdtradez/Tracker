@@ -1,7 +1,7 @@
 {
-  "name": "Daily Tracker",
-  "short_name": "Tracker",
-  "description": "Daily habits, water, trade journal, goals and levels",
+  "name": "Daily Edge",
+  "short_name": "Daily Edge",
+  "description": "Discipline over dopamine. Daily habits, trades, goals and levels.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
