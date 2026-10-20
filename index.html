@@ -98,6 +98,19 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .rwbtns{display:flex;gap:8px;margin-top:8px}
 .rwbtns button{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer}
 .rwbtns button[aria-pressed='true']{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.remind{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.remind.done{border-color:var(--accent)}
+.remind h3{margin:0 0 8px;font-size:1rem}
+.rrow{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;min-height:44px;font-size:.95rem}
+.rrow span:last-child{color:var(--accent);font-weight:600;white-space:nowrap}
+.exgrid{display:flex;flex-wrap:wrap;gap:6px}
+.exgrid button{min-height:42px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);cursor:pointer}
+.exgrid button[aria-pressed='true']{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.exrow{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 8px 8px 12px;margin-top:6px}
+.nrow{display:grid;grid-template-columns:minmax(0,1fr) 120px 44px;gap:8px;align-items:center;margin-bottom:8px}
+.nrow select,.nrow input{width:100%;min-height:44px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit}
+.nrow .del{padding:0;height:44px}
+#notifSec .fld input{background:var(--bg)}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -130,6 +143,8 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     <p class="msg" id="msg"></p>
   </section>
 
+  <section class="remind" id="remind" aria-live="polite"><div class="thead" style="margin-bottom:8px"><h3 id="remindTitle" style="margin:0">Today’s reminders</h3><button type="button" class="del" id="remindCust" aria-expanded="false">Customize</button></div><div id="remindSet" style="display:none;margin-bottom:10px"></div><div id="remindList"></div></section>
+
   <section class="lvl" aria-label="Your level">
     <div class="lvltop">
       <div class="badge" id="lvlNum">1</div>
@@ -159,8 +174,22 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <h2>Daily</h2>
   <div id="daily"></div>
 
+  <h2 id="exTitle">Exercise</h2>
+  <section class="water" id="exSec" aria-label="Exercise log">
+    <div class="exgrid" id="exTypes" role="group" aria-label="Activity"></div>
+    <div class="fld" id="exOtherWrap" style="display:none;margin:10px 0 0"><span>Activity name</span><input id="exOther" placeholder="Pickleball"></div>
+    <div class="wrow" style="margin-top:12px">
+      <button class="wbtn" id="exMinus" type="button" aria-label="5 fewer minutes">−</button>
+      <div class="wmid"><b id="exMinV">15</b> <span>minutes</span></div>
+      <button class="wbtn" id="exPlus" type="button" aria-label="5 more minutes">+</button>
+    </div>
+    <button class="addbtn" id="exAdd" type="button" style="margin:12px 0 0">Log exercise</button>
+    <div id="exList"></div>
+    <p class="msg" id="exSum"></p>
+  </section>
+
   <h2>Water</h2>
-  <section class="water" aria-label="Water tracker">
+  <section class="water" id="waterSec" aria-label="Water tracker">
     <div class="wrow">
       <button class="wbtn" id="wMinus" type="button" aria-label="Remove a glass">−</button>
       <div class="wmid" aria-live="polite"><b id="wCount">0</b> <span id="wOf">of 8 glasses</span></div>
@@ -174,7 +203,7 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <h2 id="weekTitle">Weekly review</h2>
   <div id="weekly"></div>
 
-  <h2 id='journalTop'>Trade journal</h2>
+  <h2 id='journalTop' style='scroll-margin-top:12px'>Trade journal</h2>
   <p class='msg' id='jDateLine'></p>
   <section class='stats' aria-label='Journal summary'>
     <div class='stat'><b id='jWeek'>$0</b><span>this week</span></div>
@@ -217,6 +246,17 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <h2>Payout rules by account</h2>
   <textarea id="rules" placeholder="List each account and its payout rules: profit target, minimum trading days, consistency rule, and how drawdown is measured."></textarea>
 
+  <h2 id="notifTitle">Notifications</h2>
+  <section class="water" id="notifSec" aria-label="Notification settings">
+    <p class="msg" style="margin-top:0" id="nState"></p>
+    <div class="fld"><span>Reminder service address</span><input id="nUrl" inputmode="url" autocomplete="off" placeholder="https://tracker-reminders.yourname.workers.dev"></div>
+    <p class="msg" style="margin:0 0 6px">Reminders, and when to send them</p>
+    <div id="nList"></div>
+    <button class="addbtn" id="nAdd" type="button" style="margin:4px 0 0">Add a reminder</button>
+    <div class="rwbtns"><button id="nEnable" type="button">Turn on notifications</button><button id="nTest" type="button">Send a test</button></div>
+    <p class="msg" id="nMsg" aria-live="polite"></p>
+  </section>
+
   <h2>Backup</h2>
   <p class="msg" style="margin-top:0">Save a copy of all your history, or restore it on another device.</p>
   <div class="rwbtns"><button id="bkDownload" type="button">Download backup file</button><button id="bkUpload" type="button">Restore from file</button></div>
@@ -232,7 +272,7 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 <script>
 var DAILY=[
-  ["walk","Walked 15 to 20 minutes"],
+  ["walk","Exercised 15 to 20 minutes"],
   ["protein","Protein at every meal"],
   ["swap","Kept my food swap (no sugary drinks)"],
   ["bed","In bed at my set bedtime"],
@@ -258,7 +298,7 @@ function weekStart(s){var d=parse(s);d.setDate(d.getDate()-d.getDay());return is
 function today(){return iso(new Date());}
 function isNoTrade(s){var j=state.journal[s];return !!(j&&j.noTrade);}
 var TRADE_ITEMS={plan:1,log:1};
-function countFor(s){var o=state.days[s]||{},nt=isNoTrade(s);return DAILY.filter(function(x){return o[x[0]]||(nt&&TRADE_ITEMS[x[0]]);}).length;}
+function countFor(s){var o=state.days[s]||{},nt=isNoTrade(s);return DAILY.filter(function(x){return o[x[0]]||(nt&&TRADE_ITEMS[x[0]])||(x[0]==='walk'&&exMin(s)>=15);}).length;}
 
 function load(){
   try{
@@ -274,7 +314,7 @@ function load(){
     }
   }catch(e){}
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}scheduleSync();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}scheduleSync();if(typeof nSchedule==='function')nSchedule();}
 
 function makeItem(id,text,store){
   var b=document.createElement("button");
@@ -305,7 +345,11 @@ function render(){
   var dEl=document.getElementById("daily"),wEl=document.getElementById("weekly");
   dEl.innerHTML="";wEl.innerHTML="";
   DAILY.forEach(function(x){
-    if(isNoTrade(view)&&TRADE_ITEMS[x[0]]){
+    if(x[0]==='walk'&&exMin(view)>=15){
+      var be=makeItem(x[0],x[1]+' (from exercise log)',{walk:true});
+      be.disabled=true;be.style.cursor='default';be.setAttribute('aria-disabled','true');
+      dEl.appendChild(be);
+    }else if(isNoTrade(view)&&TRADE_ITEMS[x[0]]){
       var b=makeItem(x[0],x[1]+' (no trade day)',{plan:true,log:true});
       b.disabled=true;b.style.cursor='default';b.setAttribute('aria-disabled','true');
       dEl.appendChild(b);
@@ -313,7 +357,7 @@ function render(){
   });
   WEEKLY.forEach(function(x){wEl.appendChild(makeItem(x[0],x[1],state.weeks[ws]));});
   document.getElementById("weekTitle").textContent="Weekly review, week of "+parse(ws).toLocaleDateString(undefined,{month:"short",day:"numeric"});
-  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();
+  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();if(typeof renderNotif==='function')renderNotif();
 }
 
 function jEntry(){var e=state.journal[view];if(!e){e={trades:[],mb:'',ma:'',well:'',mis:'',tom:''};state.journal[view]=e;}return e;}
@@ -464,6 +508,46 @@ document.getElementById('wPlus').addEventListener('click',function(){setWater(1)
 document.getElementById('wMinus').addEventListener('click',function(){setWater(-1);});
 document.getElementById('wGoalPlus').addEventListener('click',function(){setWaterGoal(1);});
 document.getElementById('wGoalMinus').addEventListener('click',function(){setWaterGoal(-1);});
+var EX_TYPES=['Walk','Strength','Stretching','Cycling','Swimming','Water aerobics','Elliptical','Yoga','Chair workout','Other'];
+var exSel='Walk',exMinVal=15;
+function exMin(s){var d=state.days[s];return d&&d.ex?d.ex.reduce(function(n,e){return n+(+e.min||0);},0):0;}
+function strengthWeek(s){var ws=weekStart(s),n=0;for(var i=0;i<7;i++){var d=state.days[addDays(ws,i)];if(d&&d.ex)d.ex.forEach(function(e){if(e.type==='Strength')n++;});}return n;}
+function renderEx(){
+  var g=document.getElementById('exTypes');g.innerHTML='';
+  EX_TYPES.forEach(function(t){var b=document.createElement('button');b.type='button';b.textContent=t;b.setAttribute('aria-pressed',t===exSel?'true':'false');
+    b.addEventListener('click',function(){exSel=t;renderEx();});g.appendChild(b);});
+  document.getElementById('exOtherWrap').style.display=exSel==='Other'?'block':'none';
+  document.getElementById('exMinV').textContent=exMinVal;
+  var day=state.days[view]||{},list=document.getElementById('exList');list.innerHTML='';
+  (day.ex||[]).forEach(function(e,i){var r=document.createElement('div');r.className='exrow';r.innerHTML='<span></span><button type="button" class="del">Delete</button>';
+    r.firstChild.textContent=e.type+', '+e.min+' min';
+    r.lastChild.setAttribute('aria-label','Delete '+e.type+' entry');
+    r.lastChild.addEventListener('click',function(){day.ex.splice(i,1);if(!day.ex.length)delete day.ex;save();render();});list.appendChild(r);});
+  var m=exMin(view),sw=strengthWeek(view);
+  document.getElementById('exSum').textContent=(m?m+' minutes logged this day. ':'Nothing logged this day yet. ')+(m>=15?'Your exercise box is checked. ':'')+'Strength this week: '+sw+' of 2.';
+}
+document.getElementById('exMinus').addEventListener('click',function(){exMinVal=Math.max(5,exMinVal-5);renderEx();});
+document.getElementById('exPlus').addEventListener('click',function(){exMinVal=Math.min(240,exMinVal+5);renderEx();});
+document.getElementById('exAdd').addEventListener('click',function(){
+  var day=state.days[view]||(state.days[view]={});if(!day.ex)day.ex=[];
+  var name=exSel==='Other'?((document.getElementById('exOther').value||'').trim()||'Other'):exSel;
+  day.ex.push({type:name,min:exMinVal});save();render();
+});
+var REMIND_OPTS=[['yesterday','Nothing logged yesterday'],['boxes','Daily boxes left'],['water','Water goal'],['trades','Log trades on weekdays'],['reflection','Followed plan and reflection'],['sunday','Sunday weekly review']];
+function ron(k){var o=state.goals.remindOff||{};return !o[k];}
+function renderRemindSet(){
+  var box=document.getElementById('remindSet');box.innerHTML='';
+  var p=document.createElement('p');p.className='msg';p.style.margin='0 0 8px';p.textContent='Choose which reminders to show.';box.appendChild(p);
+  REMIND_OPTS.forEach(function(o){var b=document.createElement('button');b.type='button';b.className='item';b.style.minHeight='48px';b.style.padding='10px 12px';
+    b.innerHTML='<span class="box" aria-hidden="true">✓</span><span></span>';b.lastChild.textContent=o[1];b.setAttribute('aria-pressed',ron(o[0])?'true':'false');
+    b.addEventListener('click',function(){var off=state.goals.remindOff||(state.goals.remindOff={});off[o[0]]=!off[o[0]];b.setAttribute('aria-pressed',ron(o[0])?'true':'false');save();renderRemind();});
+    box.appendChild(b);});
+}
+document.getElementById('remindCust').addEventListener('click',function(){
+  var s=document.getElementById('remindSet'),open=s.style.display==='none';
+  s.style.display=open?'block':'none';this.setAttribute('aria-expanded',open?'true':'false');this.textContent=open?'Done':'Customize';
+  if(open)renderRemindSet();
+});
 function renderStrip(){
   var st=document.getElementById("strip");st.innerHTML="";
   var ws=weekStart(view),t=today();
@@ -547,11 +631,39 @@ function renderRewards(){
     lv.appendChild(rwCard('l'+r[0],'Level '+r[0],r[1],function(){return curLevel>=r[0];},function(){return 'Level '+r[0]+' needed';}));
   });
 }
+var SHORTN={walk:'exercise',protein:'protein',swap:'food swap',bed:'bedtime',plan:'trading plan',log:'trade log'};
+function renderRemind(){
+  var t=today(),dow=parse(t).getDay(),items=[];
+  var day=state.days[t]||{},j=state.journal[t],nt=isNoTrade(t);
+  function go(id,d){return function(){if(view!==d){view=d;render();}var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});};}
+  var y=addDays(t,-1),yd=state.days[y]||{},yj=state.journal[y];
+  var yEmpty=countFor(y)===0&&!(yd.water)&&!(yj&&(yj.trades.length||yj.noTrade));
+  var anyHistory=Object.keys(state.days).some(function(k){return k<t&&(countFor(k)>0||state.days[k].water);})||Object.keys(state.journal).some(function(k){return k<t&&(state.journal[k].trades.length||state.journal[k].noTrade);});
+  if(ron('yesterday')&&yEmpty&&anyHistory)items.push(['Nothing logged yesterday. Fill it in?','Open',go('daily',y)]);
+  var left=DAILY.filter(function(x){return !day[x[0]]&&!(nt&&TRADE_ITEMS[x[0]])&&!(x[0]==='walk'&&exMin(t)>=15);});
+  if(ron('boxes')&&left.length)items.push([left.length+(left.length===1?' daily box left':' daily boxes left')+(left.length<=3?': '+left.map(function(x){return SHORTN[x[0]];}).join(', '):''),'Check',go('daily',t)]);
+  var w=day.water||0,g=waterGoal();
+  if(ron('water')&&w<g)items.push([(g-w)+' more '+(g-w===1?'glass':'glasses')+' of water to reach your goal','Water',go('waterSec',t)]);
+  var weekday=dow>=1&&dow<=5;
+  if(ron('trades')&&weekday&&!nt&&!(j&&j.trades.length))items.push(['Log your trades, or mark today as a no trade day','Journal',go('journalTop',t)]);
+  if(ron('reflection')&&j&&j.trades.length){
+    var np=j.trades.filter(function(x){return !x.plan;}).length;
+    if(np)items.push(['Answer “followed plan” on '+np+(np===1?' trade':' trades'),'Journal',go('journalTop',t)]);
+    if(!(j.well&&j.mis&&j.tom))items.push(['Fill in did well, mistake, and tomorrow’s adjustment','Journal',go('journalTop',t)]);
+  }
+  if(ron('sunday')&&dow===0){var wk=state.weeks[weekStart(t)]||{};var wl=WEEKLY.filter(function(x){return !wk[x[0]];}).length;if(wl)items.push(['Sunday review: '+wl+(wl===1?' box':' boxes')+' left','Review',go('weekTitle',t)]);}
+  var box=document.getElementById('remindList'),sec=document.getElementById('remind');box.innerHTML='';
+  var allOff=REMIND_OPTS.every(function(o){return !ron(o[0]);});
+  if(!items.length){sec.className='remind done';document.getElementById('remindTitle').textContent=allOff?'Reminders are off':'All caught up for today';var p=document.createElement('p');p.className='msg';p.style.margin='0';p.textContent=allOff?'Tap Customize to turn reminders back on.':'Everything for today is logged. Nice work.';box.appendChild(p);return;}
+  sec.className='remind';document.getElementById('remindTitle').textContent='Today’s reminders ('+items.length+')';
+  items.forEach(function(it){var b=document.createElement('button');b.type='button';b.className='rrow';b.innerHTML='<span></span><span></span>';b.firstChild.textContent=it[0];b.lastChild.textContent=it[1];b.addEventListener('click',it[2]);box.appendChild(b);});
+}
 function renderLevel(){
   var r=computeXP(),xp=r.xp,lvl=1;
   while(xp>=levelStart(lvl+1))lvl++;
   var t='Starter';TITLES.forEach(function(p){if(lvl>=p[0])t=p[1];});
   var a=levelStart(lvl),b=levelStart(lvl+1);
+  renderRemind();
   curLevel=lvl;rwRefs.forEach(function(f){f();});
   document.getElementById('lvlNum').textContent=lvl;
   document.getElementById('lvlName').textContent='Level '+lvl+', '+t;
@@ -644,6 +756,103 @@ async function startSync(){
   pushSync();
 }
 
+
+var N_TYPES=[['checkin','Check in (nothing logged yet)'],['finish','Finish your day (anything left)'],['trades','Trades (weekdays, none logged)'],['water','Water goal not reached']];
+function nCfg(){var n=state.goals.notify;if(!n||typeof n!=='object'){n=state.goals.notify={url:'',enabled:false,reminders:[{id:'r1',type:'trades',time:'15:30'},{id:'r2',type:'checkin',time:'20:00'}]};}if(!Array.isArray(n.reminders))n.reminders=[];return n;}
+function nDevice(){var id=null;try{id=localStorage.getItem('tracker-device-id');}catch(e){}if(!id){id='d'+Math.random().toString(36).slice(2)+Date.now().toString(36);try{localStorage.setItem('tracker-device-id',id);}catch(e){}}return id;}
+function nMsg(t){document.getElementById('nMsg').textContent=t;}
+function nUrl(){return (nCfg().url||'').trim().replace(/\/+$/,'');}
+function todayStatus(){
+  var t=today(),day=state.days[t]||{},j=state.journal[t],nt=isNoTrade(t),dow=parse(t).getDay();
+  var trades=!!(j&&j.trades.length),water=(day.water||0)>=waterGoal();
+  var anything=countFor(t)>0||!!day.water||exMin(t)>0||trades||nt;
+  var left=DAILY.filter(function(x){return !day[x[0]]&&!(nt&&TRADE_ITEMS[x[0]])&&!(x[0]==='walk'&&exMin(t)>=15);}).length;
+  var remaining=left+(water?0:1)+((dow>=1&&dow<=5&&!nt&&!trades)?1:0);
+  return {date:t,anything:anything,remaining:remaining,trades:trades,water:water,noTrade:nt};
+}
+var nTimer=null;
+function nMirror(){
+  if(!('caches' in window))return;
+  try{caches.open('tracker-data').then(function(c){return c.put('/__state',new Response(JSON.stringify({status:todayStatus(),url:nUrl(),id:nDevice()}),{headers:{'Content-Type':'application/json'}}));}).catch(function(){});}catch(e){}
+}
+function nSchedule(){clearTimeout(nTimer);nTimer=setTimeout(nSendStatus,2500);}
+function nSendStatus(){
+  nMirror();
+  var n=nCfg();if(!n.enabled||!nUrl())return;
+  var st=JSON.stringify(todayStatus()),last=null;try{last=localStorage.getItem('tracker-last-status');}catch(e){}
+  if(st===last)return;
+  fetch(nUrl()+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:nDevice(),status:JSON.parse(st)})})
+    .then(function(r){if(r.ok){try{localStorage.setItem('tracker-last-status',st);}catch(e){}}else if(r.status===404){n.enabled=false;save();renderNotif();nMsg('The service lost this phone. Tap Turn on notifications again.');}})
+    .catch(function(){});
+}
+function b64ToBytes(b){b=b.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';var r=atob(b),a=new Uint8Array(r.length);for(var i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a;}
+function nTz(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){return 'UTC';}}
+async function nRegister(){
+  var n=nCfg(),url=nUrl();
+  var reg=await navigator.serviceWorker.ready;
+  var sub=await reg.pushManager.getSubscription();
+  if(!sub){
+    var kr=await fetch(url+'/vapid');if(!kr.ok)throw new Error('svc');
+    var key=(await kr.json()).publicKey;
+    sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(key)});
+  }
+  var r=await fetch(url+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:nDevice(),tz:nTz(),subscription:sub.toJSON(),reminders:n.reminders,status:todayStatus()})});
+  if(!r.ok)throw new Error('svc');
+  try{localStorage.setItem('tracker-last-status',JSON.stringify(todayStatus()));}catch(e){}
+  nMirror();
+}
+var nSyncTimer=null;
+function nSettingsChanged(){save();if(!nCfg().enabled)return;clearTimeout(nSyncTimer);nSyncTimer=setTimeout(function(){nRegister().then(function(){nMsg('Reminder times saved.');}).catch(function(){nMsg('Could not reach the reminder service. Check the address and your connection.');});},1200);}
+function renderNotif(){
+  var n=nCfg(),list=document.getElementById('nList');list.innerHTML='';
+  var u=document.getElementById('nUrl');if(document.activeElement!==u)u.value=n.url||'';
+  n.reminders.forEach(function(r,i){
+    var row=document.createElement('div');row.className='nrow';
+    var sel=document.createElement('select');sel.setAttribute('aria-label','Reminder type');
+    N_TYPES.forEach(function(t){var o=document.createElement('option');o.value=t[0];o.textContent=t[1];if(t[0]===r.type)o.selected=true;sel.appendChild(o);});
+    sel.addEventListener('change',function(){r.type=sel.value;nSettingsChanged();});
+    var tm=document.createElement('input');tm.type='time';tm.value=r.time||'20:00';tm.setAttribute('aria-label','Reminder time');
+    tm.addEventListener('change',function(){if(tm.value){r.time=tm.value;nSettingsChanged();}});
+    var del=document.createElement('button');del.type='button';del.className='del';del.textContent='×';del.setAttribute('aria-label','Remove reminder');
+    del.addEventListener('click',function(){n.reminders.splice(i,1);nSettingsChanged();renderNotif();});
+    row.appendChild(sel);row.appendChild(tm);row.appendChild(del);list.appendChild(row);
+  });
+  if(!n.reminders.length){var p=document.createElement('p');p.className='msg';p.style.margin='0 0 6px';p.textContent='No reminders yet. Add one below.';list.appendChild(p);}
+  var supported=('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
+  var perm=supported?Notification.permission:'unsupported';
+  document.getElementById('nEnable').textContent=n.enabled?'Turn off notifications':'Turn on notifications';
+  document.getElementById('nTest').style.display=n.enabled?'block':'none';
+  document.getElementById('nState').textContent=!supported?'Notifications need the installed app in Chrome.':perm==='denied'?'Notifications are blocked. Allow them in your phone settings for this app, then try again.':n.enabled?'Notifications are on. You only get one when something is still missing at that time.':'Notifications are off.';
+}
+document.getElementById('nUrl').addEventListener('change',function(){nCfg().url=this.value.trim();nSettingsChanged();});
+document.getElementById('nAdd').addEventListener('click',function(){var n=nCfg();if(n.reminders.length>=12){nMsg('You can have up to 12 reminders.');return;}n.reminders.push({id:'r'+Date.now().toString(36),type:'finish',time:'21:00'});nSettingsChanged();renderNotif();});
+document.getElementById('nEnable').addEventListener('click',async function(){
+  var n=nCfg(),btn=this;
+  if(n.enabled){
+    try{var reg=await navigator.serviceWorker.ready;var sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe();}catch(e){}
+    try{await fetch(nUrl()+'/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:nDevice()})});}catch(e){}
+    n.enabled=false;save();renderNotif();nMsg('Notifications turned off.');return;
+  }
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){nMsg('This browser cannot show notifications. Open the installed app from your home screen.');return;}
+  var url=nUrl();
+  if(!/^https:\/\/[^\s]+\.[^\s]+/.test(url)){nMsg('Paste your reminder service address first. It starts with https://');return;}
+  if(!n.reminders.length){nMsg('Add at least one reminder first.');return;}
+  btn.disabled=true;nMsg('Turning on…');
+  try{
+    var perm=await Notification.requestPermission();
+    if(perm!=='granted'){nMsg('Notifications were not allowed. Allow them for this app in your phone settings, then try again.');btn.disabled=false;renderNotif();return;}
+    await nRegister();
+    n.enabled=true;save();nMsg('Notifications are on. Tap Send a test to check.');
+  }catch(e){nMsg('Could not reach the reminder service. Check the address and your connection, then try again.');}
+  btn.disabled=false;renderNotif();
+});
+setTimeout(nSendStatus,1500);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)nSendStatus();});
+document.getElementById('nTest').addEventListener('click',async function(){
+  nMsg('Sending a test…');
+  try{nMirror();var r=await fetch(nUrl()+'/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:nDevice()})});var j=await r.json();nMsg(j.ok?'Test sent. It should arrive in a few seconds.':'The test did not go through. Tap Turn off, then Turn on notifications again.');}
+  catch(e){nMsg('Could not reach the reminder service.');}
+});
 
 var bkPending=null;
 function bkMsg(t){document.getElementById('bkMsg').textContent=t;}
