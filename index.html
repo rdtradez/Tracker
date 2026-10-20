@@ -7,6 +7,8 @@
 <title>Daily Edge</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1f7a52">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.workers.dev; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
@@ -556,7 +558,7 @@ function inp(val,ph,type,mode,onc,list){
   var i=document.createElement('input');i.type=type||'text';
   if(mode)i.setAttribute('inputmode',mode);
   if(list)i.setAttribute('list',list);
-  i.placeholder=ph||'';i.value=val||'';
+  i.placeholder=ph||'';i.value=val||'';i.maxLength=200;
   i.addEventListener('input',function(){onc(i.value);});
   return i;
 }
@@ -935,10 +937,10 @@ async function startSync(){
 
 var N_TYPES=[['checkin','Check in (nothing logged yet)'],['finish','Finish your day (anything left)'],['trades','Trades (weekdays, none logged)'],['water','Water goal not reached']];
 function nCfg(){var n=state.goals.notify;if(!n||typeof n!=='object'){n=state.goals.notify={url:'',enabled:false,reminders:[{id:'r1',type:'trades',time:'15:30'},{id:'r2',type:'checkin',time:'20:00'}]};}if(!Array.isArray(n.reminders))n.reminders=[];return n;}
-function nDevice(){var id=null;try{id=localStorage.getItem('tracker-device-id');}catch(e){}if(!id){id='d'+Math.random().toString(36).slice(2)+Date.now().toString(36);try{localStorage.setItem('tracker-device-id',id);}catch(e){}}return id;}
+function nDevice(){var id=null;try{id=localStorage.getItem('tracker-device-id');}catch(e){}if(!id){var rb=new Uint8Array(16);crypto.getRandomValues(rb);id='d'+Array.prototype.map.call(rb,function(x){return ('0'+x.toString(16)).slice(-2);}).join('');try{localStorage.setItem('tracker-device-id',id);}catch(e){}}return id;}
 function nMsg(t){document.getElementById('nMsg').textContent=t;}
 var DEFAULT_SVC='https://tracker-reminders.rdtradezofficial.workers.dev';
-function nUrl(){var u=(nCfg().url||DEFAULT_SVC).trim();u=u.replace(/^(?!https?:\/\/)/,'https://').replace(/^http:\/\//,'https://');var m=u.match(/^https:\/\/[^\/\s?#]+/);return m?m[0]:'';}
+function nUrl(){var u=(nCfg().url||DEFAULT_SVC).trim();if(!/^(https:\/\/)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.workers\.dev(\/.*)?$/.test(u))u=DEFAULT_SVC;u=u.replace(/^(?!https?:\/\/)/,'https://').replace(/^http:\/\//,'https://');var m=u.match(/^https:\/\/[^\/\s?#]+/);return m?m[0]:'';}
 function todayStatus(){
   var t=today(),day=state.days[t]||{},j=state.journal[t],nt=isNoTrade(t),dow=parse(t).getDay();
   var trades=!!(j&&j.trades.length),water=(day.water||0)>=waterGoal();
@@ -1363,9 +1365,18 @@ async function gPush(){
   try{var b=gAuth();b.stats=JSON.parse(st);b.deviceId=nDevice();await gPost('/group/update',b);try{localStorage.setItem('de-group-last',st);}catch(e){}}
   catch(e){if(e.status===403){gMsgText='You were removed from the group, or it no longer exists.';delete state.goals.group;save();renderGroup();}}
 }
+function cleanView(j){
+  if(!j||!Array.isArray(j.members))throw new Error('bad response');
+  function n(v,lo,hi){v=Number(v);return isFinite(v)?Math.max(lo,Math.min(hi,Math.round(v))):null;}
+  return {name:String(j.name||'').slice(0,24),code:String(j.code||'').slice(0,8),
+    nudges:(Array.isArray(j.nudges)?j.nudges:[]).slice(0,10).map(function(x){return {from:String(x&&x.from||'').slice(0,24),at:Number(x&&x.at)||0};}),
+    members:j.members.slice(0,10).map(function(m){m=m||{};var st=m.stats&&typeof m.stats==='object'?m.stats:null;
+      return {id:String(m.id||'').slice(0,40),nick:String(m.nick||'Member').slice(0,24),me:m.me===true,
+        stats:st?{date:String(st.date||'').slice(0,10),level:n(st.level,1,999),streak:n(st.streak,0,9999),today:n(st.today,0,50),of:n(st.of,1,50),weekPct:n(st.weekPct,0,100),planPct:st.planPct==null?null:n(st.planPct,0,100),checkedIn:st.checkedIn===true}:null};})};
+}
 async function gLoad(){
   if(!gCfg()||!gUrl()||gLoading)return;gLoading=true;
-  try{await gPush();var j=await gPost('/group/view',gAuth());gView=j;gView.at=Date.now();if(j.name&&j.name!==gCfg().name){gCfg().name=j.name;save();}}
+  try{await gPush();var j=cleanView(await gPost('/group/view',gAuth()));gView=j;gView.at=Date.now();if(j.name&&j.name!==gCfg().name){gCfg().name=j.name;save();}}
   catch(e){if(e.status===403||e.status===404){gMsgText='This group no longer exists, or you were removed from it.';delete state.goals.group;save();}else gMsgText='Could not load the group. Check your connection and tap Refresh.';}
   gLoading=false;renderGroup();
 }
@@ -1609,13 +1620,31 @@ function renderInsightsTab(){
 var bkPending=null;
 function bkMsg(t){document.getElementById('bkMsg').textContent=t;}
 function backupText(){return JSON.stringify({app:'daily-tracker',version:1,exported:new Date().toISOString(),state:state});}
+function sanitizeState(s){
+  function obj(x){return x&&typeof x==='object'&&!Array.isArray(x)?x:{};}
+  function dk(k){return /^\d{4}-\d{2}-\d{2}$/.test(k);}
+  function str(v,n){return typeof v==='string'?v.slice(0,n||200):'';}
+  var out={days:{},weeks:{},goals:obj(s.goals),notes:str(s.notes,5000),journal:{}};
+  Object.keys(obj(s.days)).forEach(function(k){if(!dk(k))return;var d=obj(s.days[k]),o={};Object.keys(d).forEach(function(f){var v=d[f];
+    if(f==='water'||f==='weight'){if(typeof v==='number'&&isFinite(v))o[f]=v;}
+    else if(f==='ex'){if(Array.isArray(v))o.ex=v.slice(0,20).filter(function(e){return e&&typeof e==='object';}).map(function(e){return {type:str(e.type,40)||'Other',min:Math.max(0,Math.min(600,Number(e.min)||0))};});}
+    else if(/^[A-Za-z0-9_-]{1,40}$/.test(f))o[f]=v===true;});out.days[k]=o;});
+  Object.keys(obj(s.weeks)).forEach(function(k){if(!dk(k))return;var w=obj(s.weeks[k]),o={};Object.keys(w).forEach(function(f){if(/^[A-Za-z0-9_-]{1,40}$/.test(f))o[f]=w[f]===true;});out.weeks[k]=o;});
+  Object.keys(obj(s.journal)).forEach(function(k){if(!dk(k))return;var j=obj(s.journal[k]),o={trades:[],mb:str(j.mb),ma:str(j.ma),well:str(j.well,500),mis:str(j.mis,500),tom:str(j.tom,500)};
+    if(j.noTrade)o.noTrade=true;if(j.ntReason)o.ntReason=str(j.ntReason);
+    if(j.pre&&typeof j.pre==='object'){o.pre={};Object.keys(j.pre).forEach(function(q){if(/^[a-z]{1,20}$/.test(q)&&(j.pre[q]==='yes'||j.pre[q]==='no'))o.pre[q]=j.pre[q];});}
+    (Array.isArray(j.trades)?j.trades:[]).slice(0,50).forEach(function(t){if(!t||typeof t!=='object')return;o.trades.push({acct:str(t.acct,60),dir:t.dir==='long'||t.dir==='short'?t.dir:'',time:/^\d{2}:\d{2}$/.test(t.time)?t.time:'',entry:str(t.entry,20),exit:str(t.exit,20),atm:str(t.atm,60),how:['stop','target','manual'].indexOf(t.how)>=0?t.how:'stop',res:t.res==='win'?'win':'loss',amt:str(t.amt,12),setup:str(t.setup,120),plan:t.plan==='yes'||t.plan==='no'?t.plan:'',after:str(t.after,200)});});
+    out.journal[k]=o;});
+  return out;
+}
 function restoreFrom(text){
+  if(text.length>5*1024*1024){bkMsg('That backup is too large to be a Daily Edge backup.');return;}
   var o;try{o=JSON.parse(text);}catch(e){bkMsg('That backup code is not readable. Copy the whole code and try again.');return;}
   var s=o&&o.state?o.state:o;
   if(!s||typeof s!=='object'||typeof s.days!=='object'){bkMsg('That is not a tracker backup. Copy the whole code and try again.');return;}
   if(bkPending!==text){bkPending=text;var n=Object.keys(s.days).length;bkMsg('Backup has '+n+(n===1?' day':' days')+'. Tap restore again to replace everything here with it.');return;}
   bkPending=null;
-  state={days:s.days||{},weeks:s.weeks||{},goals:s.goals||{},notes:s.notes||'',journal:s.journal||{}};
+  try{state=sanitizeState(s);}catch(e){bkMsg('That backup could not be read safely. Nothing was changed.');return;}
   save();render();bkMsg('Backup restored.');
 }
 document.getElementById('bkShow').addEventListener('click',function(){

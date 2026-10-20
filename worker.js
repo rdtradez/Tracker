@@ -5,10 +5,19 @@
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
+  "X-Content-Type-Options": "nosniff",
+  "Cache-Control": "no-store",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 const MAX_SUBS = 20;
+const MAX_BODY = 16 * 1024;
+// Only real browser push services may be used as notification endpoints.
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /^([a-z0-9-]+\.)*push\.apple\.com$/, /^([a-z0-9-]+\.)*notify\.windows\.com$/];
+function validEndpoint(e) {
+  try { const u = new URL(String(e)); return u.protocol === "https:" && PUSH_HOSTS.some((r) => r.test(u.hostname)); } catch (x) { return false; }
+}
+function validId(id) { return typeof id === "string" && /^[A-Za-z0-9_-]{12,100}$/.test(id); }
 const WINDOW_MIN = 10; // send within 10 minutes after the chosen time
 
 function json(data, status = 200) {
@@ -115,6 +124,8 @@ function randStr(n, chars) {
   const a = new Uint8Array(n); crypto.getRandomValues(a);
   let s = ""; for (const x of a) s += chars[x % chars.length]; return s;
 }
+function safeEqual(a, b) { a = String(a); b = String(b); if (a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; }
+function cleanDevice(d) { d = String(d || ""); return validId(d) ? d : ""; }
 function cleanNick(n) { return String(n || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 24); }
 function cleanStats(st) {
   st = st || {};
@@ -137,7 +148,7 @@ async function handleGroup(path, body, env) {
     let c = ""; for (let i = 0; i < 6; i++) { c = randStr(6, CODE_CHARS); if (!(await env.SUBS.get(gkey(c)))) break; }
     const memberId = randStr(12, CODE_CHARS.toLowerCase() + "0123456789"), token = randStr(32, CODE_CHARS + "abcdefghjkmnpqrstuvwxyz");
     const g = { name: cleanNick(body.name) || nick + "’s group", created: Date.now(), members: {} };
-    g.members[memberId] = { nick, token, deviceId: String(body.deviceId || "").slice(0, 100), joined: Date.now() };
+    g.members[memberId] = { nick, token, deviceId: cleanDevice(body.deviceId), joined: Date.now() };
     await env.SUBS.put(gkey(c), JSON.stringify(g));
     if (body.stats) await env.SUBS.put(mkey(c, memberId), JSON.stringify({ stats: cleanStats(body.stats), updated: Date.now() }));
     return json({ ok: true, code: c, memberId, token, name: g.name });
@@ -153,17 +164,17 @@ async function handleGroup(path, body, env) {
     const taken = Object.values(g.members).some((m) => m.nick.toLowerCase() === nick.toLowerCase());
     if (taken) return json({ error: "Someone in that group already uses that nickname. Pick another." }, 409);
     const memberId = randStr(12, CODE_CHARS.toLowerCase() + "0123456789"), token = randStr(32, CODE_CHARS + "abcdefghjkmnpqrstuvwxyz");
-    g.members[memberId] = { nick, token, deviceId: String(body.deviceId || "").slice(0, 100), joined: Date.now() };
+    g.members[memberId] = { nick, token, deviceId: cleanDevice(body.deviceId), joined: Date.now() };
     await env.SUBS.put(gkey(code), JSON.stringify(g));
     if (body.stats) await env.SUBS.put(mkey(code, memberId), JSON.stringify({ stats: cleanStats(body.stats), updated: Date.now() }));
     return json({ ok: true, code, memberId, token, name: g.name });
   }
 
-  const me = g.members[body.memberId];
-  if (!me || me.token !== body.token) return json({ error: "You are not in this group anymore." }, 403);
+  const me = typeof body.memberId === "string" && Object.prototype.hasOwnProperty.call(g.members, body.memberId) ? g.members[body.memberId] : null;
+  if (!me || typeof body.token !== "string" || !safeEqual(me.token, body.token)) return json({ error: "You are not in this group anymore." }, 403);
 
   if (path === "/group/update") {
-    if (body.deviceId && body.deviceId !== me.deviceId) { me.deviceId = String(body.deviceId).slice(0, 100); await env.SUBS.put(gkey(code), JSON.stringify(g)); }
+    if (cleanDevice(body.deviceId) && body.deviceId !== me.deviceId) { me.deviceId = cleanDevice(body.deviceId); await env.SUBS.put(gkey(code), JSON.stringify(g)); }
     await env.SUBS.put(mkey(code, body.memberId), JSON.stringify({ stats: cleanStats(body.stats), updated: Date.now() }));
     return json({ ok: true });
   }
@@ -179,7 +190,7 @@ async function handleGroup(path, body, env) {
   }
 
   if (path === "/group/nudge") {
-    const to = g.members[body.to];
+    const to = typeof body.to === "string" && Object.prototype.hasOwnProperty.call(g.members, body.to) ? g.members[body.to] : null;
     if (!to || body.to === body.memberId) return json({ error: "That person is not in this group." }, 404);
     const day = new Date().toISOString().slice(0, 10);
     let list = ((await env.SUBS.get(nkey(code, body.to), "json")) || []).filter((n) => Date.now() - n.at < 3 * 864e5);
@@ -229,33 +240,37 @@ export default {
 
     if (url.pathname === "/pending" && request.method === "GET") {
       const id = url.searchParams.get("id");
+      if (!validId(id)) return json({ type: "checkin", from: "" });
       const subs = await loadSubs(env);
       const s = subs.find((x) => x.id === id);
       return json({ type: s && s.pending ? s.pending.type : "checkin", from: s && s.pending && s.pending.from ? s.pending.from : "" });
     }
 
     if (request.method !== "POST") return json({ error: "Not found" }, 404);
+    const len = Number(request.headers.get("Content-Length") || 0);
+    if (len > MAX_BODY) return json({ error: "Request too large" }, 413);
     let body;
-    try { body = await request.json(); } catch (e) { return json({ error: "Bad request" }, 400); }
+    try { const text = await request.text(); if (text.length > MAX_BODY) return json({ error: "Request too large" }, 413); body = JSON.parse(text); } catch (e) { return json({ error: "Bad request" }, 400); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Bad request" }, 400);
     if (url.pathname.startsWith("/group/")) return handleGroup(url.pathname, body || {}, env);
-    if (!body || typeof body.id !== "string" || body.id.length > 100) return json({ error: "Missing id" }, 400);
+    if (!validId(body.id)) return json({ error: "Missing or invalid id" }, 400);
     const subs = await loadSubs(env);
     let sub = subs.find((x) => x.id === body.id);
 
     if (url.pathname === "/subscribe") {
-      if (!body.subscription || !body.subscription.endpoint) return json({ error: "Missing subscription" }, 400);
+      if (!body.subscription || !validEndpoint(body.subscription.endpoint)) return json({ error: "That is not a browser notification address." }, 400);
       const reminders = (Array.isArray(body.reminders) ? body.reminders : []).slice(0, 12).map((r) => ({
-        id: String(r.id || "").slice(0, 40), type: String(r.type || "checkin").slice(0, 20), time: String(r.time || "20:00").slice(0, 5),
+        id: String(r.id || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40), type: ["checkin", "finish", "trades", "water"].includes(r.type) ? r.type : "checkin", time: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.time)) ? String(r.time) : "20:00",
       }));
       if (!sub) {
         if (subs.length >= MAX_SUBS) return json({ error: "Too many devices" }, 429);
         sub = { id: body.id, sent: {} };
         subs.push(sub);
       }
-      sub.subscription = body.subscription;
+      sub.subscription = { endpoint: String(body.subscription.endpoint).slice(0, 800) };
       sub.tz = String(body.tz || "UTC").slice(0, 60);
       sub.reminders = reminders;
-      if (body.status) sub.status = body.status;
+      if (body.status && typeof body.status === "object") { const s = body.status; sub.status = { date: String(s.date || "").slice(0, 10), anything: !!s.anything, remaining: Math.max(0, Math.min(99, Number(s.remaining) || 0)), trades: !!s.trades, water: !!s.water, noTrade: !!s.noTrade }; }
       await saveSubs(env, subs);
       return json({ ok: true });
     }
@@ -263,7 +278,7 @@ export default {
     if (url.pathname === "/status") {
       if (!sub) return json({ error: "Not subscribed" }, 404);
       const s = body.status || {};
-      sub.status = { date: String(s.date || ""), anything: !!s.anything, remaining: Number(s.remaining) || 0, trades: !!s.trades, water: !!s.water, noTrade: !!s.noTrade };
+      sub.status = { date: String(s.date || "").slice(0, 10), anything: !!s.anything, remaining: Math.max(0, Math.min(99, Number(s.remaining) || 0)), trades: !!s.trades, water: !!s.water, noTrade: !!s.noTrade };
       await saveSubs(env, subs);
       return json({ ok: true });
     }
