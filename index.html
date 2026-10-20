@@ -154,6 +154,24 @@ main{padding-bottom:110px !important}
 #splash .sp-quote{font-size:1.15rem;color:var(--muted);margin:14px 0 0;font-style:italic}
 #splash .sp-line{width:40px;height:3px;border-radius:2px;background:var(--accent);margin:14px auto 0}
 @media (prefers-reduced-motion:reduce){#splash{transition:none}}
+.tabbar button{font-size:.72rem !important}
+.gcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.gcard h3{margin:0 0 6px;font-size:1rem}
+.gcard input{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit}
+.gcode{font-size:1.7rem;font-weight:700;letter-spacing:.18em;margin:4px 0 2px}
+.gbtn{width:100%;min-height:48px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer;margin-top:8px}
+.gbtn.alt{background:transparent;color:var(--ink);border-color:var(--line)}
+.gmem{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.gmem:first-of-type{border-top:0}
+.grank{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.85rem;background:var(--bg);border:1px solid var(--line)}
+.gmem.top .grank{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.gname{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gsub{color:var(--muted);font-size:.82rem;margin-top:2px}
+.gpct{font-size:1.25rem;font-weight:700;text-align:right}
+.gpct small{display:block;font-size:.7rem;font-weight:500;color:var(--muted)}
+.gnudge{margin-top:6px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:.82rem}
+.gdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line);margin-right:6px;vertical-align:1px}
+.gdot.on{background:var(--accent)}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -335,7 +353,11 @@ main{padding-bottom:110px !important}
   <div id="rwLevels"></div>
 
   </div>
-  <div class="tab" data-tab="charts" hidden>
+  <div class="tab" data-tab="group" hidden>
+  <h2 style="margin-top:4px">Group</h2>
+  <div id="gBody"></div>
+</div>
+<div class="tab" data-tab="charts" hidden>
   <h2 style="margin-top:4px">Charts</h2>
   <div id="chRange" style="margin-bottom:12px"></div>
   <section class="chartcard" aria-labelledby="chBoxesH"><h3 id="chBoxesH">Daily boxes completed</h3><p class="msg" id="chBoxesMsg"></p><div id="chBoxes"></div></section>
@@ -381,6 +403,7 @@ main{padding-bottom:110px !important}
   <button type="button" role="tab" data-go="today" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>Today<span class="tbadge" id="tbToday" hidden></span></button>
   <button type="button" role="tab" data-go="trades" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M5 15l4-5 4 3 6-7"/></svg>Trades</button>
   <button type="button" role="tab" data-go="progress" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 12v4M9 20h6M10 16h4v4h-4z"/></svg>Progress</button>
+  <button type="button" role="tab" data-go="group" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.2c2.4.2 4 1.8 4.5 4.8"/></svg>Group</button>
   <button type="button" role="tab" data-go="charts" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></svg>Charts</button>
   <button type="button" role="tab" data-go="settings" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</button>
 </div></nav>
@@ -434,7 +457,7 @@ function load(){
     }
   }catch(e){}
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}scheduleSync();if(typeof nSchedule==='function')nSchedule();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}scheduleSync();if(typeof nSchedule==='function')nSchedule();if(typeof gSchedule==='function')gSchedule();}
 
 function makeItem(id,text,store){
   var b=document.createElement("button");
@@ -889,7 +912,8 @@ var N_TYPES=[['checkin','Check in (nothing logged yet)'],['finish','Finish your 
 function nCfg(){var n=state.goals.notify;if(!n||typeof n!=='object'){n=state.goals.notify={url:'',enabled:false,reminders:[{id:'r1',type:'trades',time:'15:30'},{id:'r2',type:'checkin',time:'20:00'}]};}if(!Array.isArray(n.reminders))n.reminders=[];return n;}
 function nDevice(){var id=null;try{id=localStorage.getItem('tracker-device-id');}catch(e){}if(!id){id='d'+Math.random().toString(36).slice(2)+Date.now().toString(36);try{localStorage.setItem('tracker-device-id',id);}catch(e){}}return id;}
 function nMsg(t){document.getElementById('nMsg').textContent=t;}
-function nUrl(){var u=(nCfg().url||'').trim();u=u.replace(/^(?!https?:\/\/)/,'https://').replace(/^http:\/\//,'https://');var m=u.match(/^https:\/\/[^\/\s?#]+/);return m?m[0]:'';}
+var DEFAULT_SVC='https://tracker-reminders.rdtradezofficial.workers.dev';
+function nUrl(){var u=(nCfg().url||DEFAULT_SVC).trim();u=u.replace(/^(?!https?:\/\/)/,'https://').replace(/^http:\/\//,'https://');var m=u.match(/^https:\/\/[^\/\s?#]+/);return m?m[0]:'';}
 function todayStatus(){
   var t=today(),day=state.days[t]||{},j=state.journal[t],nt=isNoTrade(t),dow=parse(t).getDay();
   var trades=!!(j&&j.trades.length),water=(day.water||0)>=waterGoal();
@@ -938,7 +962,7 @@ var nSyncTimer=null;
 function nSettingsChanged(){save();if(!nCfg().enabled)return;clearTimeout(nSyncTimer);nSyncTimer=setTimeout(function(){nRegister().then(function(){nMsg('Reminder times saved.');}).catch(function(e){nMsg((e&&e.message)||'Could not save reminder times.');});},1200);}
 function renderNotif(){
   var n=nCfg(),list=document.getElementById('nList');list.innerHTML='';
-  var u=document.getElementById('nUrl');if(document.activeElement!==u)u.value=n.url||'';
+  var u=document.getElementById('nUrl');if(document.activeElement!==u)u.value=n.url||DEFAULT_SVC;
   n.reminders.forEach(function(r,i){
     var row=document.createElement('div');row.className='nrow';
     var sel=document.createElement('select');sel.setAttribute('aria-label','Reminder type');
@@ -981,6 +1005,7 @@ document.getElementById('nEnable').addEventListener('click',async function(){
   btn.disabled=false;renderNotif();
 });
 setTimeout(nSendStatus,1500);
+setTimeout(function(){if(typeof gPush==='function')gPush();},2500);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)nSendStatus();});
 document.getElementById('nTest').addEventListener('click',async function(){
   nMsg('Sending a test…');
@@ -1128,7 +1153,7 @@ function renderPayout(){
     c.appendChild(h);
     if(tgt){var bar=document.createElement('div');bar.className='bar';bar.innerHTML='<div class="fill"></div>';bar.firstChild.style.width=Math.max(0,Math.min(100,s.profit/tgt*100))+'%';c.appendChild(bar);}
     function row(label,val,ok){var r=document.createElement('div');r.className='pprow';r.innerHTML='<span></span><span></span>';r.firstChild.textContent=label;r.lastChild.textContent=val;if(ok!==undefined)r.lastChild.className=ok?'ok':'bad';c.appendChild(r);}
-    row('Profit',money(s.profit)+(tgt?' of $'+tgt.toLocaleString():''),tgt?profitOk:undefined);
+    row('Profit',money(s.profit)+(tgt?' of $'+tgt.toLocaleString():''),tgt&&profitOk?true:(s.profit<0?false:undefined));
     if(tgt&&!profitOk)row('Still needed','$'+Math.round(tgt-s.profit).toLocaleString());
     row('Trading days',s.days+(minD?' of '+minD:''),minD?daysOk:undefined);
     if(lim)row('Best day vs profit',s.profit>0?Math.round(pct)+'% (limit '+lim+'%)':'Needs profit first',s.profit>0?consOk:false);
@@ -1279,6 +1304,124 @@ function renderCharts(){
   document.getElementById('chWaterMsg').textContent='Averaging '+wAvg.toFixed(1)+' glasses a day. Dashed line is your goal of '+g+'.';
 }
 
+/* ---------- group ---------- */
+var G_SHARE=[['level','Level'],['streak','Streak'],['today','Today’s boxes'],['week','This week’s %'],['plan','Plan followed %']];
+function gCfg(){return state.goals.group||null;}
+function gShare(){var g=gCfg();if(!g.share)g.share={level:true,streak:true,today:true,week:true,plan:true};return g.share;}
+function gUrl(){return nUrl();}
+function levelInfo(){var xp=computeXP().xp,lvl=1;while(xp>=levelStart(lvl+1))lvl++;var t='Starter';TITLES.forEach(function(p){if(lvl>=p[0])t=p[1];});return {lvl:lvl,title:t};}
+function streakNow(){var t=today(),s=0,c=t;if(countFor(c)<WIN())c=addDays(c,-1);while(countFor(c)>=WIN()){s++;c=addDays(c,-1);}return s;}
+function gStats(){
+  var t=today(),sh=gCfg()?gShare():{},out={date:t,checkedIn:todayStatus().anything};
+  if(sh.level){var li=levelInfo();out.level=li.lvl;out.title=li.title;}
+  if(sh.streak)out.streak=streakNow();
+  if(sh.today){out.today=countFor(t);out.of=NB();}
+  if(sh.week){var ws=weekStart(t),tot=0,dn=0;for(var i=0;i<7;i++){var k=addDays(ws,i);if(k<=t){tot+=countFor(k);dn++;}}out.weekPct=dn?Math.round(tot/(dn*NB())*100):0;}
+  if(sh.plan){var y=0,n=0,from=addDays(t,-29);Object.keys(state.journal).forEach(function(k){if(k<from||k>t)return;state.journal[k].trades.forEach(function(x){if(x.plan==='yes')y++;if(x.plan==='yes'||x.plan==='no')n++;});});out.planPct=n?Math.round(y/n*100):null;}
+  return out;
+}
+async function gPost(path,body){
+  var r=await fetch(gUrl()+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  var j={};try{j=await r.json();}catch(e){}
+  if(!r.ok){var er=new Error(j.error||('The service answered '+r.status));er.status=r.status;throw er;}
+  return j;
+}
+function gAuth(){var g=gCfg();return {code:g.code,memberId:g.memberId,token:g.token};}
+var gTimer=null,gView=null,gLoading=false,gMsgText='',gLeaveArm=false;
+function gSchedule(){if(!gCfg()||!gUrl())return;clearTimeout(gTimer);gTimer=setTimeout(gPush,8000);}
+async function gPush(){
+  if(!gCfg()||!gUrl())return;
+  var st=JSON.stringify(gStats()),last=null;try{last=localStorage.getItem('de-group-last');}catch(e){}
+  if(st===last)return;
+  try{var b=gAuth();b.stats=JSON.parse(st);b.deviceId=nDevice();await gPost('/group/update',b);try{localStorage.setItem('de-group-last',st);}catch(e){}}
+  catch(e){if(e.status===403){gMsgText='You were removed from the group, or it no longer exists.';delete state.goals.group;save();renderGroup();}}
+}
+async function gLoad(){
+  if(!gCfg()||!gUrl()||gLoading)return;gLoading=true;
+  try{await gPush();var j=await gPost('/group/view',gAuth());gView=j;gView.at=Date.now();if(j.name&&j.name!==gCfg().name){gCfg().name=j.name;save();}}
+  catch(e){if(e.status===403||e.status===404){gMsgText='This group no longer exists, or you were removed from it.';delete state.goals.group;save();}else gMsgText='Could not load the group. Check your connection and tap Refresh.';}
+  gLoading=false;renderGroup();
+}
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+function renderGroup(){
+  var body=document.getElementById('gBody');if(!body)return;body.innerHTML='';
+  if(gMsgText){var m=el('p','msg bad',gMsgText);m.setAttribute('role','status');body.appendChild(m);}
+  if(!gUrl()){
+    var c=el('div','gcard');c.appendChild(el('h3',null,'Connect your reminder service first'));
+    c.appendChild(el('p','msg','Groups run on the same free Cloudflare service as your notifications. Add its address in Settings, then come back.'));
+    var b=el('button','gbtn','Go to Settings');b.type='button';b.addEventListener('click',function(){showTab('settings');window.scrollTo(0,0);});c.appendChild(b);body.appendChild(c);return;
+  }
+  var g=gCfg();
+  if(!g){
+    var intro=el('div','gcard');intro.appendChild(el('h3',null,'Stay accountable together'));
+    intro.appendChild(el('p','msg','Join a small group of up to 10 friends. They only see what you choose to share: your level, streak, today’s boxes, this week’s %, and plan followed %. Never your weight, trades, journal, or P&L.'));
+    var nickF=el('div','fld');nickF.appendChild(el('span',null,'Your nickname'));var nick=el('input');nick.id='gNick';nick.maxLength=24;nick.placeholder='RJ';nick.value=state.goals.groupNick||'';nickF.appendChild(nick);intro.appendChild(nickF);body.appendChild(intro);
+    var cc=el('div','gcard');cc.appendChild(el('h3',null,'Start a group'));var nm=el('input');nm.id='gName';nm.maxLength=24;nm.placeholder='Group name, like Edge Crew';cc.appendChild(nm);
+    var cb=el('button','gbtn','Create group');cb.type='button';cc.appendChild(cb);body.appendChild(cc);
+    var jc=el('div','gcard');jc.appendChild(el('h3',null,'Join a friend’s group'));var code=el('input');code.id='gCode';code.maxLength=8;code.placeholder='Group code, like 5MZG5Z';code.setAttribute('autocapitalize','characters');code.style.textTransform='uppercase';jc.appendChild(code);
+    var jb=el('button','gbtn alt','Join group');jb.type='button';jc.appendChild(jb);body.appendChild(jc);
+    var msg=el('p','msg');msg.id='gMsg';msg.setAttribute('aria-live','polite');body.appendChild(msg);
+    async function go(path,extra){
+      var n=nick.value.trim();if(!n){msg.textContent='Pick a nickname first.';nick.focus();return;}
+      state.goals.groupNick=n;cb.disabled=jb.disabled=true;msg.textContent=path==='/group/create'?'Creating your group…':'Joining…';
+      try{
+        var share={level:true,streak:true,today:true,week:true,plan:true};state.goals.group={share:share};
+        var req={nick:n,deviceId:nDevice(),stats:gStats()};for(var k in extra)req[k]=extra[k];
+        var r=await gPost(path,req);
+        state.goals.group={code:r.code,memberId:r.memberId,token:r.token,name:r.name,nick:n,share:share};gMsgText='';save();
+        try{localStorage.removeItem('de-group-last');}catch(e){}
+        gLoad();
+      }catch(e){delete state.goals.group;msg.textContent=e.message||'Something went wrong. Try again.';cb.disabled=jb.disabled=false;}
+    }
+    cb.addEventListener('click',function(){go('/group/create',{name:nm.value.trim()});});
+    jb.addEventListener('click',function(){var v=code.value.trim().toUpperCase();if(!v){msg.textContent='Enter the group code your friend sent you.';code.focus();return;}go('/group/join',{code:v});});
+    return;
+  }
+  var head=el('div','gcard');head.appendChild(el('h3',null,g.name||'Your group'));
+  head.appendChild(el('p','msg','Invite code'));var cd=el('div','gcode',g.code);head.appendChild(cd);
+  var inv=el('button','gbtn','Invite friends');inv.type='button';head.appendChild(inv);
+  var invMsg=el('p','msg');invMsg.setAttribute('aria-live','polite');head.appendChild(invMsg);
+  inv.addEventListener('click',async function(){
+    var link=location.origin+location.pathname,text='Join my Daily Edge group "'+(g.name||'')+'". Open '+link+', install it, go to the Group tab, and enter code '+g.code+'. Discipline over dopamine.';
+    try{if(navigator.share){await navigator.share({title:'Join my Daily Edge group',text:text});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+    try{await navigator.clipboard.writeText(text);invMsg.textContent='Invite copied. Paste it in a text to your friends.';}catch(e){invMsg.textContent='Send your friends this code: '+g.code+', plus the app link: '+link;}
+  });
+  body.appendChild(head);
+  if(gView&&gView.nudges&&gView.nudges.length){
+    var nb=el('div','risk warn');var names=[];gView.nudges.forEach(function(n){if(names.indexOf(n.from)<0)names.push(n.from);});
+    nb.textContent=names.join(' and ')+(names.length>1?' nudged you. ':' nudged you. ')+'Time to check in.';
+    var dz=el('button','gnudge','Got it');dz.type='button';dz.style.marginLeft='8px';dz.addEventListener('click',function(){gPost('/group/clearnudges',gAuth()).catch(function(){});gView.nudges=[];renderGroup();});nb.appendChild(dz);body.appendChild(nb);
+  }
+  var board=el('div','gcard');var bh=el('div','pphead');bh.appendChild(el('h3',null,'This week'));var rf=el('button','gnudge',gLoading?'Loading…':'Refresh');rf.type='button';rf.addEventListener('click',gLoad);bh.appendChild(rf);board.appendChild(bh);
+  if(!gView){board.appendChild(el('p','msg',gLoading?'Loading your group…':'Tap Refresh to load your group.'));}
+  else{
+    var t=today(),mem=gView.members.slice().sort(function(a,b){var x=a.stats&&a.stats.weekPct!=null?a.stats.weekPct:-1,y=b.stats&&b.stats.weekPct!=null?b.stats.weekPct:-1;if(y!==x)return y-x;return ((b.stats&&b.stats.streak)||0)-((a.stats&&a.stats.streak)||0);});
+    mem.forEach(function(m,i){
+      var st=m.stats||{},fresh=st.date===t,row=el('div','gmem'+(i===0&&st.weekPct!=null?' top':''));
+      row.appendChild(el('div','grank',String(i+1)));
+      var mid=el('div');var nmEl=el('div','gname');var dot=el('span','gdot'+(fresh&&st.checkedIn?' on':''));dot.setAttribute('aria-hidden','true');nmEl.appendChild(dot);nmEl.appendChild(document.createTextNode(m.nick+(m.me?' (you)':'')));mid.appendChild(nmEl);
+      var bits=[];if(st.level!=null)bits.push('Level '+st.level);if(st.streak!=null)bits.push(st.streak+' day streak');if(st.today!=null)bits.push((fresh?st.today:0)+' of '+st.of+' today');if(st.planPct!=null)bits.push(st.planPct+'% plan');
+      mid.appendChild(el('div','gsub',bits.join(', ')||'Sharing nothing yet'));
+      mid.appendChild(el('div','gsub',fresh&&st.checkedIn?'Checked in today':'Not checked in today'));
+      if(!m.me&&!(fresh&&st.checkedIn)){var nu=el('button','gnudge','Nudge');nu.type='button';nu.setAttribute('aria-label','Nudge '+m.nick);
+        nu.addEventListener('click',async function(){nu.disabled=true;nu.textContent='Sending…';try{var b=gAuth();b.to=m.id;var r=await gPost('/group/nudge',b);nu.textContent=r.already?'Already nudged today':'Nudged';}catch(e){nu.textContent='Could not send';nu.disabled=false;}});mid.appendChild(nu);}
+      row.appendChild(mid);
+      var pc=el('div','gpct',st.weekPct!=null?st.weekPct+'%':'–');pc.appendChild(el('small',null,'this week'));row.appendChild(pc);
+      board.appendChild(row);
+    });
+    var mins=Math.round((Date.now()-gView.at)/60000);board.appendChild(el('p','msg',mins<1?'Updated just now.':'Updated '+mins+' min ago.'));
+  }
+  body.appendChild(board);
+  var shc=el('div','gcard');shc.appendChild(el('h3',null,'What you share'));shc.appendChild(el('p','msg','Your weight, trades, journal, and P&L are never shared.'));
+  var sh=gShare();G_SHARE.forEach(function(o){var b=el('button','item');b.type='button';b.style.minHeight='48px';b.style.padding='10px 12px';b.innerHTML='<span class="box" aria-hidden="true">✓</span><span></span>';b.lastChild.textContent=o[1];b.setAttribute('aria-pressed',sh[o[0]]?'true':'false');
+    b.addEventListener('click',function(){sh[o[0]]=!sh[o[0]];b.setAttribute('aria-pressed',sh[o[0]]?'true':'false');save();clearTimeout(gTimer);gTimer=setTimeout(function(){gPush().then(gLoad);},800);});shc.appendChild(b);});
+  body.appendChild(shc);
+  var lv=el('button','gbtn alt',gLeaveArm?'Tap again to leave the group':'Leave group');lv.type='button';
+  lv.addEventListener('click',async function(){if(!gLeaveArm){gLeaveArm=true;renderGroup();setTimeout(function(){gLeaveArm=false;renderGroup();},4000);return;}
+    gLeaveArm=false;try{await gPost('/group/leave',gAuth());}catch(e){}delete state.goals.group;gView=null;gMsgText='';try{localStorage.removeItem('de-group-last');}catch(e){}save();renderGroup();});
+  body.appendChild(lv);
+}
+
 var bkPending=null;
 function bkMsg(t){document.getElementById('bkMsg').textContent=t;}
 function backupText(){return JSON.stringify({app:'daily-tracker',version:1,exported:new Date().toISOString(),state:state});}
@@ -1324,7 +1467,8 @@ var TAB_KEY='tracker-tab';
 function showTab(name){
   document.querySelectorAll('.tab').forEach(function(t){t.hidden=t.getAttribute('data-tab')!==name;});
   document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-selected',b.getAttribute('data-go')===name?'true':'false');});
-  document.getElementById('dayHeader').hidden=(name==='settings'||name==='charts');
+  document.getElementById('dayHeader').hidden=(name==='settings'||name==='charts'||name==='group');
+  if(name==='group'&&typeof renderGroup==='function'){renderGroup();if(gCfg()&&(!gView||Date.now()-gView.at>60000))gLoad();}
   if(name==='charts'&&typeof renderCharts==='function')renderCharts();
   try{localStorage.setItem(TAB_KEY,name);}catch(e){}
 }

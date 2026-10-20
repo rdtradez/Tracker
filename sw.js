@@ -1,4 +1,4 @@
-var CACHE='tracker-v8';
+var CACHE='tracker-v9';
 var FILES=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png','icon-maskable-512.png'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(FILES);}).then(function(){return self.skipWaiting();}));});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k.indexOf('tracker-v')===0&&k!==CACHE;}).map(function(k){return caches.delete(k);}));}).then(function(){return self.clients.claim();}));});
@@ -21,8 +21,9 @@ self.addEventListener('push',function(e){
     try{var c=await caches.open('tracker-data');var r=await c.match('/__state');if(r)data=await r.json();}catch(err){}
     var type='checkin';
     try{if(e.data){var j=e.data.json();if(j&&j.type)type=j.type;}}catch(err){}
-    try{if(type==='checkin'&&data.url&&data.id){var pr=await fetch(data.url+'/pending?id='+encodeURIComponent(data.id));type=(await pr.json()).type||'checkin';}}catch(err){}
-    var m=compose(type,data.status);
+    var from='';
+    try{if(type==='checkin'&&data.url&&data.id){var pr=await fetch(data.url+'/pending?id='+encodeURIComponent(data.id));var pj=await pr.json();type=pj.type||'checkin';from=pj.from||'';}}catch(err){}
+    var m=type==='nudge'?{t:(from||'A friend')+' nudged you',b:'Time to check in on Daily Edge.'}:compose(type,data.status);
     return self.registration.showNotification(m.t,{body:m.b,icon:'icon-192.png',badge:'icon-192.png',tag:'tracker-'+type,data:{url:'./'}});
   })());
 });

@@ -108,13 +108,111 @@ async function runSchedule(env, now = new Date()) {
   return { sent };
 }
 
+// ---------- Groups: share process scores with friends ----------
+const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const MAX_MEMBERS = 10;
+function randStr(n, chars) {
+  const a = new Uint8Array(n); crypto.getRandomValues(a);
+  let s = ""; for (const x of a) s += chars[x % chars.length]; return s;
+}
+function cleanNick(n) { return String(n || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 24); }
+function cleanStats(st) {
+  st = st || {};
+  const num = (v, lo, hi) => { const n = Number(v); return isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : null; };
+  const out = { date: String(st.date || "").slice(0, 10) };
+  if ("level" in st) { out.level = num(st.level, 1, 999); out.title = String(st.title || "").slice(0, 30); }
+  if ("streak" in st) out.streak = num(st.streak, 0, 9999);
+  if ("today" in st) { out.today = num(st.today, 0, 50); out.of = num(st.of, 1, 50); }
+  if ("weekPct" in st) out.weekPct = num(st.weekPct, 0, 100);
+  if ("planPct" in st) out.planPct = st.planPct == null ? null : num(st.planPct, 0, 100);
+  out.checkedIn = !!st.checkedIn;
+  return out;
+}
+async function handleGroup(path, body, env) {
+  const gkey = (c) => "g:" + c, mkey = (c, m) => "gm:" + c + ":" + m, nkey = (c, m) => "gn:" + c + ":" + m;
+  const code = String(body.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+
+  if (path === "/group/create") {
+    const nick = cleanNick(body.nick); if (!nick) return json({ error: "Pick a nickname first." }, 400);
+    let c = ""; for (let i = 0; i < 6; i++) { c = randStr(6, CODE_CHARS); if (!(await env.SUBS.get(gkey(c)))) break; }
+    const memberId = randStr(12, CODE_CHARS.toLowerCase() + "0123456789"), token = randStr(32, CODE_CHARS + "abcdefghjkmnpqrstuvwxyz");
+    const g = { name: cleanNick(body.name) || nick + "’s group", created: Date.now(), members: {} };
+    g.members[memberId] = { nick, token, deviceId: String(body.deviceId || "").slice(0, 100), joined: Date.now() };
+    await env.SUBS.put(gkey(c), JSON.stringify(g));
+    if (body.stats) await env.SUBS.put(mkey(c, memberId), JSON.stringify({ stats: cleanStats(body.stats), updated: Date.now() }));
+    return json({ ok: true, code: c, memberId, token, name: g.name });
+  }
+
+  if (!code) return json({ error: "Enter the group code." }, 400);
+  const g = await env.SUBS.get(gkey(code), "json");
+  if (!g) return json({ error: "No group found with that code. Check it and try again." }, 404);
+
+  if (path === "/group/join") {
+    const nick = cleanNick(body.nick); if (!nick) return json({ error: "Pick a nickname first." }, 400);
+    if (Object.keys(g.members).length >= MAX_MEMBERS) return json({ error: "That group is full (10 people max)." }, 409);
+    const taken = Object.values(g.members).some((m) => m.nick.toLowerCase() === nick.toLowerCase());
+    if (taken) return json({ error: "Someone in that group already uses that nickname. Pick another." }, 409);
+    const memberId = randStr(12, CODE_CHARS.toLowerCase() + "0123456789"), token = randStr(32, CODE_CHARS + "abcdefghjkmnpqrstuvwxyz");
+    g.members[memberId] = { nick, token, deviceId: String(body.deviceId || "").slice(0, 100), joined: Date.now() };
+    await env.SUBS.put(gkey(code), JSON.stringify(g));
+    if (body.stats) await env.SUBS.put(mkey(code, memberId), JSON.stringify({ stats: cleanStats(body.stats), updated: Date.now() }));
+    return json({ ok: true, code, memberId, token, name: g.name });
+  }
+
+  const me = g.members[body.memberId];
+  if (!me || me.token !== body.token) return json({ error: "You are not in this group anymore." }, 403);
+
+  if (path === "/group/update") {
+    if (body.deviceId && body.deviceId !== me.deviceId) { me.deviceId = String(body.deviceId).slice(0, 100); await env.SUBS.put(gkey(code), JSON.stringify(g)); }
+    await env.SUBS.put(mkey(code, body.memberId), JSON.stringify({ stats: cleanStats(body.stats), updated: Date.now() }));
+    return json({ ok: true });
+  }
+
+  if (path === "/group/view") {
+    const ids = Object.keys(g.members);
+    const rows = await Promise.all(ids.map(async (id) => {
+      const m = (await env.SUBS.get(mkey(code, id), "json")) || {};
+      return { id, nick: g.members[id].nick, me: id === body.memberId, stats: m.stats || null, updated: m.updated || null };
+    }));
+    const nudges = ((await env.SUBS.get(nkey(code, body.memberId), "json")) || []).filter((n) => Date.now() - n.at < 3 * 864e5);
+    return json({ ok: true, name: g.name, code, members: rows, nudges });
+  }
+
+  if (path === "/group/nudge") {
+    const to = g.members[body.to];
+    if (!to || body.to === body.memberId) return json({ error: "That person is not in this group." }, 404);
+    const day = new Date().toISOString().slice(0, 10);
+    let list = ((await env.SUBS.get(nkey(code, body.to), "json")) || []).filter((n) => Date.now() - n.at < 3 * 864e5);
+    if (list.some((n) => n.fromId === body.memberId && n.day === day)) return json({ ok: true, already: true });
+    list.push({ from: me.nick, fromId: body.memberId, at: Date.now(), day });
+    list = list.slice(-5);
+    await env.SUBS.put(nkey(code, body.to), JSON.stringify(list));
+    let pushed = false;
+    if (to.deviceId) {
+      const subs = await loadSubs(env); const sub = subs.find((x) => x.id === to.deviceId);
+      if (sub) { sub.pending = { type: "nudge", from: me.nick, date: day }; await saveSubs(env, subs); const st = await sendPush(sub, await getVapid(env)); pushed = st >= 200 && st < 300; }
+    }
+    return json({ ok: true, pushed });
+  }
+
+  if (path === "/group/clearnudges") { await env.SUBS.delete(nkey(code, body.memberId)); return json({ ok: true }); }
+
+  if (path === "/group/leave") {
+    delete g.members[body.memberId];
+    await env.SUBS.delete(mkey(code, body.memberId)); await env.SUBS.delete(nkey(code, body.memberId));
+    if (Object.keys(g.members).length) await env.SUBS.put(gkey(code), JSON.stringify(g)); else await env.SUBS.delete(gkey(code));
+    return json({ ok: true });
+  }
+  return json({ error: "Not found" }, 404);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     if (!env.SUBS) return json({ error: "The SUBS storage is not connected yet. Add the KV binding named SUBS." }, 500);
 
-    if (url.pathname === "/" || url.pathname === "/health") return json({ ok: true, service: "tracker reminders" });
+    if (url.pathname === "/" || url.pathname === "/health") return json({ ok: true, service: "tracker reminders", groups: true });
 
     if (url.pathname === "/vapid" && request.method === "GET") {
       const v = await getVapid(env);
@@ -125,12 +223,13 @@ export default {
       const id = url.searchParams.get("id");
       const subs = await loadSubs(env);
       const s = subs.find((x) => x.id === id);
-      return json({ type: s && s.pending ? s.pending.type : "checkin" });
+      return json({ type: s && s.pending ? s.pending.type : "checkin", from: s && s.pending && s.pending.from ? s.pending.from : "" });
     }
 
     if (request.method !== "POST") return json({ error: "Not found" }, 404);
     let body;
     try { body = await request.json(); } catch (e) { return json({ error: "Bad request" }, 400); }
+    if (url.pathname.startsWith("/group/")) return handleGroup(url.pathname, body || {}, env);
     if (!body || typeof body.id !== "string" || body.id.length > 100) return json({ error: "Missing id" }, 400);
     const subs = await loadSubs(env);
     let sub = subs.find((x) => x.id === body.id);
