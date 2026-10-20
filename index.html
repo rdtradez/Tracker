@@ -111,6 +111,14 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .nrow select,.nrow input{width:100%;min-height:44px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit}
 .nrow .del{padding:0;height:44px}
 #notifSec .fld input{background:var(--bg)}
+main{padding-bottom:110px !important}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+.tabbar .tbin{display:flex;width:100%;max-width:520px}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;padding:6px 0;color:var(--muted);font-size:.78rem;min-height:56px;position:relative;cursor:pointer}
+.tabbar button[aria-selected="true"]{color:var(--accent);font-weight:600}
+.tabbar svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tbadge{position:absolute;top:2px;left:calc(50% + 6px);background:var(--accent);color:var(--accent-ink);border-radius:999px;font-size:.68rem;font-weight:700;padding:1px 6px;line-height:1.4}
+.tab[hidden],#dayHeader[hidden]{display:none}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -128,6 +136,7 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 </head>
 <body>
 <main>
+  <div id="dayHeader">
   <div class="nav">
     <button class="arrow" id="prev" type="button" aria-label="Previous day">‹</button>
     <div class="title"><h1 id="dayTitle"></h1><p id="daySub"></p></div>
@@ -137,6 +146,8 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <div class="strip" id="strip"></div>
   <button class="todaybtn" id="todayBtn" type="button">Jump to today</button>
 
+  </div>
+  <div class="tab" data-tab="today">
   <section class="score" aria-live="polite">
     <div><b id="count">0</b> of 6 done</div>
     <div class="bar"><div class="fill" id="fill"></div></div>
@@ -144,32 +155,6 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   </section>
 
   <section class="remind" id="remind" aria-live="polite"><div class="thead" style="margin-bottom:8px"><h3 id="remindTitle" style="margin:0">Today’s reminders</h3><button type="button" class="del" id="remindCust" aria-expanded="false">Customize</button></div><div id="remindSet" style="display:none;margin-bottom:10px"></div><div id="remindList"></div></section>
-
-  <section class="lvl" aria-label="Your level">
-    <div class="lvltop">
-      <div class="badge" id="lvlNum">1</div>
-      <div><div class="lvlname" id="lvlName">Starter</div><div class="lvlsub" id="lvlSub">0 XP</div></div>
-    </div>
-    <div class="bar"><div class="fill" id="lvlFill"></div></div>
-    <p class="msg" id="lvlNext"></p>
-    <p class="lvlup" id="lvlUp" role="status"></p>
-    <details><summary>How you earn XP</summary><ul>
-      <li>10 XP for each daily box, plus 20 for a perfect 6 of 6 day</li>
-      <li>15 XP for hitting your water goal</li>
-      <li>15 XP for each trade where you followed your plan</li>
-      <li>10 XP for filling in did well, mistake, and tomorrow’s adjustment</li>
-      <li>15 XP for each weekly review box</li>
-      <li>50 XP for every 7 days in a row with 4 or more boxes</li>
-      <li>150 to 200 XP for each yearly goal checkpoint</li>
-    </ul><p style="margin:8px 0 0">XP rewards your process, never your profit or loss, so a red day where you followed your rules still levels you up.</p></details>
-  </section>
-
-  <section class="stats" aria-label="Streak and weekly summary">
-    <div class="stat"><b id="streak">0</b><span>day streak (4+ boxes)</span></div>
-    <div class="stat"><b id="wkAvg">0.0</b><span>week avg per day</span></div>
-    <div class="stat"><b id="prevAvg">0.0</b><span>prior week avg</span></div>
-  </section>
-  <p class="msg">Boxes this week: <span id="wkTotal">0 of 0</span></p>
 
   <h2>Daily</h2>
   <div id="daily"></div>
@@ -200,9 +185,9 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     <div class="wgoal"><span>Daily goal, glasses of 8 oz</span><span><button type="button" id="wGoalMinus" aria-label="Lower goal">−</button> <b id="wGoal">8</b> <button type="button" id="wGoalPlus" aria-label="Raise goal">+</button></span></div>
   </section>
 
-  <h2 id="weekTitle">Weekly review</h2>
-  <div id="weekly"></div>
-
+  <div class="foot"><button id="clearDay" type="button">Clear this day</button></div>
+  </div>
+  <div class="tab" data-tab="trades" hidden>
   <h2 id='journalTop' style='scroll-margin-top:12px'>Trade journal</h2>
   <p class='msg' id='jDateLine'></p>
   <section class='stats' aria-label='Journal summary'>
@@ -231,6 +216,40 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <datalist id='atms'><option value='High ATR'><option value='Normal ATR'><option value='Low ATR'></datalist>
   <datalist id='accts'><option value='Midgard 50K'><option value='Tradeify'><option value='Apex'><option value='FFF Velocity'><option value='FFF Prime'><option value='Halcyon'></datalist>
 
+  <h2>Payout rules by account</h2>
+  <textarea id="rules" placeholder="List each account and its payout rules: profit target, minimum trading days, consistency rule, and how drawdown is measured."></textarea>
+
+  </div>
+  <div class="tab" data-tab="progress" hidden>
+  <section class="lvl" aria-label="Your level">
+    <div class="lvltop">
+      <div class="badge" id="lvlNum">1</div>
+      <div><div class="lvlname" id="lvlName">Starter</div><div class="lvlsub" id="lvlSub">0 XP</div></div>
+    </div>
+    <div class="bar"><div class="fill" id="lvlFill"></div></div>
+    <p class="msg" id="lvlNext"></p>
+    <p class="lvlup" id="lvlUp" role="status"></p>
+    <details><summary>How you earn XP</summary><ul>
+      <li>10 XP for each daily box, plus 20 for a perfect 6 of 6 day</li>
+      <li>15 XP for hitting your water goal</li>
+      <li>15 XP for each trade where you followed your plan</li>
+      <li>10 XP for filling in did well, mistake, and tomorrow’s adjustment</li>
+      <li>15 XP for each weekly review box</li>
+      <li>50 XP for every 7 days in a row with 4 or more boxes</li>
+      <li>150 to 200 XP for each yearly goal checkpoint</li>
+    </ul><p style="margin:8px 0 0">XP rewards your process, never your profit or loss, so a red day where you followed your rules still levels you up.</p></details>
+  </section>
+
+  <section class="stats" aria-label="Streak and weekly summary">
+    <div class="stat"><b id="streak">0</b><span>day streak (4+ boxes)</span></div>
+    <div class="stat"><b id="wkAvg">0.0</b><span>week avg per day</span></div>
+    <div class="stat"><b id="prevAvg">0.0</b><span>prior week avg</span></div>
+  </section>
+  <p class="msg">Boxes this week: <span id="wkTotal">0 of 0</span></p>
+
+  <h2 id="weekTitle">Weekly review</h2>
+  <div id="weekly"></div>
+
   <h2>Yearly goals</h2>
   <p class="msg">Weight checkpoints</p>
   <div id="goalsWeight"></div>
@@ -243,9 +262,8 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <p class="msg">Level rewards (tap a reward to change it)</p>
   <div id="rwLevels"></div>
 
-  <h2>Payout rules by account</h2>
-  <textarea id="rules" placeholder="List each account and its payout rules: profit target, minimum trading days, consistency rule, and how drawdown is measured."></textarea>
-
+  </div>
+  <div class="tab" data-tab="settings" hidden>
   <h2 id="notifTitle">Notifications</h2>
   <section class="water" id="notifSec" aria-label="Notification settings">
     <p class="msg" style="margin-top:0" id="nState"></p>
@@ -265,10 +283,17 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <textarea id="bkText" style="min-height:110px;margin-top:8px" placeholder="Paste backup code here, then tap Restore from pasted code" aria-label="Backup code"></textarea>
   <p class="msg" id="bkMsg" aria-live="polite"></p>
 
-  <div class="foot"><button id="clearDay" type="button">Clear this day</button></div>
   <p class="tip" id="syncStatus" aria-live="polite"></p>
   <p class="tip">Your history is saved on this phone. Download a backup now and then so you never lose it.</p>
+</div>
 </main>
+<nav class="tabbar" aria-label="Sections"><div class="tbin" role="tablist">
+  <button type="button" role="tab" data-go="today" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>Today<span class="tbadge" id="tbToday" hidden></span></button>
+  <button type="button" role="tab" data-go="trades" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M5 15l4-5 4 3 6-7"/></svg>Trades</button>
+  <button type="button" role="tab" data-go="progress" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 12v4M9 20h6M10 16h4v4h-4z"/></svg>Progress</button>
+  <button type="button" role="tab" data-go="settings" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</button>
+</div></nav>
+
 
 <script>
 var DAILY=[
@@ -635,7 +660,7 @@ var SHORTN={walk:'exercise',protein:'protein',swap:'food swap',bed:'bedtime',pla
 function renderRemind(){
   var t=today(),dow=parse(t).getDay(),items=[];
   var day=state.days[t]||{},j=state.journal[t],nt=isNoTrade(t);
-  function go(id,d){return function(){if(view!==d){view=d;render();}var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});};}
+  function go(id,d){return function(){if(view!==d){view=d;render();}var el=document.getElementById(id);if(el){var tb=el.closest('.tab');if(tb)showTab(tb.getAttribute('data-tab'));el.scrollIntoView({behavior:'smooth',block:'start'});}};}
   var y=addDays(t,-1),yd=state.days[y]||{},yj=state.journal[y];
   var yEmpty=countFor(y)===0&&!(yd.water)&&!(yj&&(yj.trades.length||yj.noTrade));
   var anyHistory=Object.keys(state.days).some(function(k){return k<t&&(countFor(k)>0||state.days[k].water);})||Object.keys(state.journal).some(function(k){return k<t&&(state.journal[k].trades.length||state.journal[k].noTrade);});
@@ -652,6 +677,7 @@ function renderRemind(){
     if(!(j.well&&j.mis&&j.tom))items.push(['Fill in did well, mistake, and tomorrow’s adjustment','Journal',go('journalTop',t)]);
   }
   if(ron('sunday')&&dow===0){var wk=state.weeks[weekStart(t)]||{};var wl=WEEKLY.filter(function(x){return !wk[x[0]];}).length;if(wl)items.push(['Sunday review: '+wl+(wl===1?' box':' boxes')+' left','Review',go('weekTitle',t)]);}
+  var tbT=document.getElementById('tbToday');if(tbT){tbT.textContent=items.length;tbT.hidden=!items.length;tbT.setAttribute('aria-label',items.length+' reminders');}
   var box=document.getElementById('remindList'),sec=document.getElementById('remind');box.innerHTML='';
   var allOff=REMIND_OPTS.every(function(o){return !ron(o[0]);});
   if(!items.length){sec.className='remind done';document.getElementById('remindTitle').textContent=allOff?'Reminders are off':'All caught up for today';var p=document.createElement('p');p.className='msg';p.style.margin='0';p.textContent=allOff?'Tap Customize to turn reminders back on.':'Everything for today is logged. Nice work.';box.appendChild(p);return;}
@@ -900,6 +926,16 @@ document.getElementById('bkFile').addEventListener('change',function(ev){
 })();
 if(navigator.storage&&navigator.storage.persist){try{navigator.storage.persist();}catch(e){}}
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+
+var TAB_KEY='tracker-tab';
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(function(t){t.hidden=t.getAttribute('data-tab')!==name;});
+  document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-selected',b.getAttribute('data-go')===name?'true':'false');});
+  document.getElementById('dayHeader').hidden=(name==='settings');
+  try{localStorage.setItem(TAB_KEY,name);}catch(e){}
+}
+document.querySelectorAll('.tabbar button').forEach(function(b){b.addEventListener('click',function(){showTab(b.getAttribute('data-go'));window.scrollTo(0,0);});});
+(function(){var t='today';try{t=localStorage.getItem(TAB_KEY)||'today';}catch(e){}if(!document.querySelector('.tab[data-tab="'+t+'"]'))t='today';showTab(t);})();
 load();view=today();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}render();startSync();
 </script>
 </body>
