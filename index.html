@@ -761,7 +761,7 @@ var N_TYPES=[['checkin','Check in (nothing logged yet)'],['finish','Finish your 
 function nCfg(){var n=state.goals.notify;if(!n||typeof n!=='object'){n=state.goals.notify={url:'',enabled:false,reminders:[{id:'r1',type:'trades',time:'15:30'},{id:'r2',type:'checkin',time:'20:00'}]};}if(!Array.isArray(n.reminders))n.reminders=[];return n;}
 function nDevice(){var id=null;try{id=localStorage.getItem('tracker-device-id');}catch(e){}if(!id){id='d'+Math.random().toString(36).slice(2)+Date.now().toString(36);try{localStorage.setItem('tracker-device-id',id);}catch(e){}}return id;}
 function nMsg(t){document.getElementById('nMsg').textContent=t;}
-function nUrl(){return (nCfg().url||'').trim().replace(/\/+$/,'');}
+function nUrl(){var u=(nCfg().url||'').trim();u=u.replace(/^(?!https?:\/\/)/,'https://').replace(/^http:\/\//,'https://');var m=u.match(/^https:\/\/[^\/\s?#]+/);return m?m[0]:'';}
 function todayStatus(){
   var t=today(),day=state.days[t]||{},j=state.journal[t],nt=isNoTrade(t),dow=parse(t).getDay();
   var trades=!!(j&&j.trades.length),water=(day.water||0)>=waterGoal();
@@ -789,20 +789,25 @@ function b64ToBytes(b){b=b.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)
 function nTz(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){return 'UTC';}}
 async function nRegister(){
   var n=nCfg(),url=nUrl();
-  var reg=await navigator.serviceWorker.ready;
-  var sub=await reg.pushManager.getSubscription();
-  if(!sub){
-    var kr=await fetch(url+'/vapid');if(!kr.ok)throw new Error('svc');
-    var key=(await kr.json()).publicKey;
-    sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(key)});
-  }
-  var r=await fetch(url+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:nDevice(),tz:nTz(),subscription:sub.toJSON(),reminders:n.reminders,status:todayStatus()})});
-  if(!r.ok)throw new Error('svc');
+  function fail(step,e){var x=new Error(step+(e&&(e.name||e.message)?' ('+(e.name&&e.name!=='Error'?e.name+': ':'')+(e.message||'')+')':''));x.step=step;throw x;}
+  var reg;
+  try{reg=await Promise.race([navigator.serviceWorker.ready,new Promise(function(_,rj){setTimeout(function(){rj(new Error('timed out'));},8000);})]);}catch(e){fail('The app\u2019s background helper is not running. Close the app fully and reopen it from your home screen',e);}
+  var key;
+  try{var kr=await fetch(url+'/vapid');if(!kr.ok)throw new Error('status '+kr.status);key=(await kr.json()).publicKey;if(!key)throw new Error('no key');}catch(e){fail('Could not reach '+url+'. Check the address',e);}
+  var sub;
+  try{
+    sub=await reg.pushManager.getSubscription();
+    if(sub&&sub.options&&sub.options.applicationServerKey){var a=new Uint8Array(sub.options.applicationServerKey),b=b64ToBytes(key),same=a.length===b.length&&a.every(function(v,i){return v===b[i];});if(!same){await sub.unsubscribe();sub=null;}}
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(key)});
+  }catch(e){fail('Chrome would not set up notifications for this app',e);}
+  var r;
+  try{r=await fetch(url+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:nDevice(),tz:nTz(),subscription:sub.toJSON(),reminders:n.reminders,status:todayStatus()})});}catch(e){fail('Could not save your reminders to the service',e);}
+  if(!r.ok){var t='';try{t=(await r.json()).error||'';}catch(e){}fail('The service would not save your reminders',{message:'status '+r.status+(t?', '+t:'')});}
   try{localStorage.setItem('tracker-last-status',JSON.stringify(todayStatus()));}catch(e){}
   nMirror();
 }
 var nSyncTimer=null;
-function nSettingsChanged(){save();if(!nCfg().enabled)return;clearTimeout(nSyncTimer);nSyncTimer=setTimeout(function(){nRegister().then(function(){nMsg('Reminder times saved.');}).catch(function(){nMsg('Could not reach the reminder service. Check the address and your connection.');});},1200);}
+function nSettingsChanged(){save();if(!nCfg().enabled)return;clearTimeout(nSyncTimer);nSyncTimer=setTimeout(function(){nRegister().then(function(){nMsg('Reminder times saved.');}).catch(function(e){nMsg((e&&e.message)||'Could not save reminder times.');});},1200);}
 function renderNotif(){
   var n=nCfg(),list=document.getElementById('nList');list.innerHTML='';
   var u=document.getElementById('nUrl');if(document.activeElement!==u)u.value=n.url||'';
@@ -834,7 +839,8 @@ document.getElementById('nEnable').addEventListener('click',async function(){
     n.enabled=false;save();renderNotif();nMsg('Notifications turned off.');return;
   }
   if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){nMsg('This browser cannot show notifications. Open the installed app from your home screen.');return;}
-  var url=nUrl();
+  nCfg().url=document.getElementById('nUrl').value.trim();save();
+  var url=nUrl();document.getElementById('nUrl').value=url;nCfg().url=url;
   if(!/^https:\/\/[^\s]+\.[^\s]+/.test(url)){nMsg('Paste your reminder service address first. It starts with https://');return;}
   if(!n.reminders.length){nMsg('Add at least one reminder first.');return;}
   btn.disabled=true;nMsg('Turning on…');
@@ -843,7 +849,7 @@ document.getElementById('nEnable').addEventListener('click',async function(){
     if(perm!=='granted'){nMsg('Notifications were not allowed. Allow them for this app in your phone settings, then try again.');btn.disabled=false;renderNotif();return;}
     await nRegister();
     n.enabled=true;save();nMsg('Notifications are on. Tap Send a test to check.');
-  }catch(e){nMsg('Could not reach the reminder service. Check the address and your connection, then try again.');}
+  }catch(e){nMsg((e&&e.message?e.message:'Something went wrong')+'. Send me a screenshot of this message if it keeps happening.');}
   btn.disabled=false;renderNotif();
 });
 setTimeout(nSendStatus,1500);
