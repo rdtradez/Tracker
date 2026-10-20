@@ -180,6 +180,12 @@ main{padding-bottom:110px !important}
 #profSave{width:100%;min-height:48px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer;margin-top:4px}
 .pnew{background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px;margin-bottom:10px}
 .pnew select,.pnew input,.tcard select{width:100%;min-height:44px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+.ins{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:0;padding:12px 14px;margin-bottom:10px}
+.ins.good{border-left-color:var(--accent)}
+.ins.warn{border-left-color:#d08a2c}
+.ins.recap{border-left-color:var(--accent);border-width:2px 2px 2px 4px}
+.ins h3{margin:0 0 4px;font-size:.98rem}
+.ins p{margin:0;color:var(--muted);font-size:.92rem;line-height:1.45}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -302,12 +308,7 @@ main{padding-bottom:110px !important}
   <div id="ppNew" style="display:none"></div>
   <button class="addbtn" id="ppAdd" type="button">Add an account</button>
 
-  <h2 id="inTitle">Insights</h2>
-  <div id="inRange" style="margin-bottom:10px"></div>
-  <div id="inBody"></div>
 
-  <h2>Payout rules by account</h2>
-  <textarea id="rules" placeholder="List each account and its payout rules: profit target, minimum trading days, consistency rule, and how drawdown is measured."></textarea>
 
   </div>
   <div class="tab" data-tab="progress" hidden>
@@ -369,7 +370,11 @@ main{padding-bottom:110px !important}
   <div id="gBody"></div>
 </div>
 <div class="tab" data-tab="charts" hidden>
-  <h2 style="margin-top:4px">Charts</h2>
+  <h2 style="margin-top:4px">Insights</h2>
+  <p class="msg" style="margin-top:0">Updates from everything you log. New insights appear as you build more history.</p>
+  <div id="insList" aria-live="polite"></div>
+
+  <h2>Charts</h2>
   <div id="chRange" style="margin-bottom:12px"></div>
   <section class="chartcard" aria-labelledby="chBoxesH"><h3 id="chBoxesH">Daily boxes completed</h3><p class="msg" id="chBoxesMsg"></p><div id="chBoxes"></div></section>
   <section class="chartcard" aria-labelledby="chWeightH"><h3 id="chWeightH">Weight trend</h3><p class="msg" id="chWeightMsg"></p><div id="chWeight"></div></section>
@@ -377,6 +382,10 @@ main{padding-bottom:110px !important}
   <section class="chartcard" aria-labelledby="chPlanH"><h3 id="chPlanH">Plan followed, by week</h3><p class="msg" id="chPlanMsg"></p><div id="chPlan"></div></section>
   <section class="chartcard" aria-labelledby="chExH"><h3 id="chExH">Exercise minutes, by week</h3><p class="msg" id="chExMsg"></p><div id="chEx"></div></section>
   <section class="chartcard" aria-labelledby="chWaterH"><h3 id="chWaterH">Water, average glasses per day</h3><p class="msg" id="chWaterMsg"></p><div id="chWater"></div></section>
+
+  <h2 id="inTitle">Trading breakdown</h2>
+  <div id="inRange" style="margin-bottom:10px"></div>
+  <div id="inBody"></div>
 </div>
 <div class="tab" data-tab="settings" hidden>
   <h2 id="profTitle">Profile</h2>
@@ -423,7 +432,7 @@ main{padding-bottom:110px !important}
   <button type="button" role="tab" data-go="trades" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M5 15l4-5 4 3 6-7"/></svg>Trades</button>
   <button type="button" role="tab" data-go="progress" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 12v4M9 20h6M10 16h4v4h-4z"/></svg>Progress</button>
   <button type="button" role="tab" data-go="group" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.2c2.4.2 4 1.8 4.5 4.8"/></svg>Group</button>
-  <button type="button" role="tab" data-go="charts" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></svg>Charts</button>
+  <button type="button" role="tab" data-go="charts" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>Insights</button>
   <button type="button" role="tab" data-go="settings" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</button>
 </div></nav>
 
@@ -520,7 +529,7 @@ function render(){
   });
   WEEKLY.forEach(function(x){wEl.appendChild(makeItem(x[0],x[1],state.weeks[ws]));});
   document.getElementById("weekTitle").textContent="Weekly review, week of "+parse(ws).toLocaleDateString(undefined,{month:"short",day:"numeric"});
-  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();renderChecklist();renderWeight();renderLimits();renderRisk();renderPayout();renderInsights();renderProfile();var chTab=document.querySelector('.tab[data-tab="charts"]');if(chTab&&!chTab.hidden)renderCharts();if(typeof renderNotif==='function')renderNotif();
+  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();renderChecklist();renderWeight();renderLimits();renderRisk();renderPayout();renderInsights();renderProfile();var chTab=document.querySelector('.tab[data-tab="charts"]');if(chTab&&!chTab.hidden){renderInsightsTab();renderCharts();}if(typeof renderNotif==='function')renderNotif();
 }
 
 function jEntry(){var e=state.journal[view];if(!e){e={trades:[],mb:'',ma:'',well:'',mis:'',tom:''};state.journal[view]=e;}return e;}
@@ -639,7 +648,7 @@ var GOALS_W=[
   ["g-w4","Down 50 pounds by Oct 20"]
 ];
 var GOALS_T=[
-  ["g-t1","Wrote down my Midgard 50K payout rules"],
+  ["g-t1","Know the payout rules for my main accounts"],
   ["g-t2","Built my buffer with rule following days"],
   ["g-t3","Met the trading day and consistency requirements"],
   ["g-t4","Requested my first payout (target: February)"],
@@ -652,9 +661,6 @@ function renderGoals(){
   a.innerHTML="";b.innerHTML="";
   GOALS_W.forEach(function(x){a.appendChild(makeItem(x[0],x[1],state.goals));});
   GOALS_T.forEach(function(x){b.appendChild(makeItem(x[0],x[1],state.goals));});
-  var ta=document.getElementById("rules");
-  ta.value=state.notes||"";
-  ta.oninput=function(){state.notes=ta.value;save();};
 }
 function waterGoal(){var g=state.goals&&state.goals.waterGoal;return (typeof g==='number'&&g>0)?g:8;}
 function renderWater(){
@@ -1524,6 +1530,82 @@ function renderNewAcct(){
   row.appendChild(add);row.appendChild(cancel);box.appendChild(row);
 }
 
+/* ---------- written insights ---------- */
+function insStreak(){var t=today(),s=0,c=t;if(countFor(c)<WIN())c=addDays(c,-1);while(countFor(c)>=WIN()){s++;c=addDays(c,-1);}return s;}
+function avg(a){return a.length?a.reduce(function(x,y){return x+y;},0)/a.length:0;}
+function rangeDays(n){var t=today(),out=[];for(var i=n-1;i>=0;i--)out.push(addDays(t,-i));return out;}
+function hasData(k){var d=state.days[k],j=state.journal[k];return countFor(k)>0||!!(d&&(d.water||d.ex||d.weight))||!!(j&&(j.trades.length||j.noTrade));}
+function dayTrades(k){var j=state.journal[k];return j?j.trades.filter(function(t){return !isNaN(parseFloat(t.amt));}):[];}
+function fmtDate(k){return parse(k).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});}
+function buildInsights(){
+  var out=[],t=today(),N=NB(),days60=rangeDays(60),days30=rangeDays(30);
+  var logged=days60.filter(hasData).length;
+  /* weekly recap */
+  var ws=weekStart(t),wd=[],lw=[];for(var i=0;i<7;i++){var k=addDays(ws,i);if(k<=t)wd.push(k);lw.push(addDays(ws,i-7));}
+  var box=wd.reduce(function(n,k){return n+countFor(k);},0),poss=wd.length*N,lbox=lw.reduce(function(n,k){return n+countFor(k);},0);
+  var tdays=0,pnl=0,py=0,pn=0,ex=0,water=[];
+  wd.forEach(function(k){var tr=dayTrades(k);if(tr.length)tdays++;tr.forEach(function(x){pnl+=tradePnl(x);});var j=state.journal[k];if(j)j.trades.forEach(function(x){if(x.plan==='yes')py++;if(x.plan==='yes'||x.plan==='no')pn++;});ex+=exMin(k);var d=state.days[k];water.push(d&&d.water||0);});
+  var parts=[box+' of '+poss+' boxes'];
+  if(tdays)parts.push(tdays+(tdays===1?' trading day':' trading days')+', '+money(pnl));
+  if(pn)parts.push('followed your plan on '+py+' of '+pn+' trades');
+  if(ex)parts.push(ex+' exercise minutes');
+  parts.push(avg(water).toFixed(1)+' glasses of water a day');
+  var recap=parts.join(', ')+'.';
+  if(lbox>0||wd.length===7){var a=poss?box/poss:0,b=lbox/(7*N);var diff=Math.round((a-b)*100);if(lbox>0&&diff!==0)recap+=' Box completion is '+(diff>0?'up ':'down ')+Math.abs(diff)+' points from last week.';}
+  out.push({k:'recap',t:'This week so far',p:recap});
+  if(logged<5){out.push({k:'info',t:'Keep logging',p:'Patterns show up after about a week of entries. Check in daily and log every trade, and this page will start telling you what is working.'});return out;}
+  /* pre-trade check vs results */
+  var done=[],skip=[];
+  days60.forEach(function(k){var tr=dayTrades(k);if(!tr.length)return;var j=state.journal[k],p=tr.reduce(function(n,x){return n+tradePnl(x);},0);var pre=j.pre||{},full=preDone(j,k),anyNo=PRE.some(function(q){return pre[q[0]]==='no';});if(full&&!anyNo)done.push(p);else skip.push(p);});
+  if(done.length>=3&&skip.length>=3){var dA=avg(done),sA=avg(skip);out.push({k:dA>sA?'good':'warn',t:'Your pre-trade check matters',p:'Days you finished it with all yes answers averaged '+money(dA)+'. Days you skipped it or answered no averaged '+money(sA)+'.'+(dA>sA?' Keep doing it before every session.':' Look at which answers were no on those days.')});}
+  /* plan followed vs broke */
+  var fy=[],fn=[];days60.forEach(function(k){dayTrades(k).forEach(function(x){if(x.plan==='yes')fy.push(tradePnl(x));if(x.plan==='no')fn.push(tradePnl(x));});});
+  if(fy.length>=3&&fn.length>=3){var yA=avg(fy),nA=avg(fn);out.push({k:yA>=nA?'good':'warn',t:'Following your plan pays',p:'Trades where you followed your plan averaged '+money(yA)+'. Trades where you broke it averaged '+money(nA)+', across '+fn.length+' trades.'});}
+  else if(fy.length+fn.length>=5&&fn.length===0){out.push({k:'good',t:'Clean execution',p:'You have followed your plan on every trade you answered in the last 60 days. That is the habit that leads to payouts.'});}
+  /* exercise vs habits */
+  var exD=[],noD=[];days30.forEach(function(k){if(!hasData(k))return;var c=countFor(k)-((exMin(k)>=15||(state.days[k]||{}).walk)?1:0);if(exMin(k)>=15||(state.days[k]||{}).walk)exD.push(c);else noD.push(c);});
+  if(exD.length>=5&&noD.length>=5){var eA=avg(exD),nA2=avg(noD);if(Math.abs(eA-nA2)>=0.4)out.push({k:eA>nA2?'good':'info',t:eA>nA2?'Exercise lifts your whole day':'Exercise and habits',p:'On days you exercised, you completed '+eA.toFixed(1)+' of your other boxes on average, versus '+nA2.toFixed(1)+' on days you did not.'});}
+  /* weakest weekday */
+  var wsum=[0,0,0,0,0,0,0],wcnt=[0,0,0,0,0,0,0];days60.forEach(function(k){if(!hasData(k)&&k<t)return;var g=parse(k).getDay();wsum[g]+=countFor(k);wcnt[g]++;});
+  var names=['Sundays','Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays'],lo=-1,lv=99,hi=-1,hv=-1;
+  for(var w=0;w<7;w++){if(wcnt[w]>=2){var v=wsum[w]/wcnt[w];if(v<lv){lv=v;lo=w;}if(v>hv){hv=v;hi=w;}}}
+  if(lo>=0&&hi>=0&&hv-lv>=1&&logged>=14)out.push({k:'warn',t:names[lo]+' are your weak spot',p:'You average '+lv.toFixed(1)+' boxes on '+names[lo]+' versus '+hv.toFixed(1)+' on '+names[hi]+'. Plan '+names[lo].toLowerCase()+' the night before.'});
+  /* time of day and setups */
+  var bt={},bs={};days60.forEach(function(k){dayTrades(k).forEach(function(x){var b=timeBucket(x.time);if(b!=='No time logged'){bt[b]=bt[b]||{n:0,w:0,p:0};bt[b].n++;bt[b].p+=tradePnl(x);if(tradePnl(x)>0)bt[b].w++;}var s=(x.setup||'').trim();if(s){var key=s.toLowerCase();bs[key]=bs[key]||{l:s,n:0,w:0,p:0};bs[key].n++;bs[key].p+=tradePnl(x);if(tradePnl(x)>0)bs[key].w++;}});});
+  var badT=Object.keys(bt).filter(function(b){return bt[b].n>=4&&bt[b].p<0;}).sort(function(a,b){return bt[a].p-bt[b].p;})[0];
+  var goodT=Object.keys(bt).filter(function(b){return bt[b].n>=4&&bt[b].p>0;}).sort(function(a,b){return bt[b].p-bt[a].p;})[0];
+  if(badT)out.push({k:'warn',t:'Watch your '+badT.toLowerCase()+' trades',p:'You are '+bt[badT].w+' for '+bt[badT].n+' there, '+money(bt[badT].p)+' total.'+(goodT?' Your best window is '+goodT.toLowerCase()+' at '+money(bt[goodT].p)+'.':' Consider skipping that window.')});
+  else if(goodT)out.push({k:'good',t:'Your best time to trade',p:goodT+' is your strongest window: '+bt[goodT].w+' wins in '+bt[goodT].n+' trades, '+money(bt[goodT].p)+'.'});
+  var sk=Object.keys(bs).filter(function(k){return bs[k].n>=4;});
+  if(sk.length>=2){sk.sort(function(a,b){return bs[b].p-bs[a].p;});var top=bs[sk[0]],bot=bs[sk[sk.length-1]];if(top.p>0)out.push({k:'good',t:top.l+' is your best setup',p:Math.round(top.w/top.n*100)+'% wins over '+top.n+' trades, '+money(top.p)+'.'+(bot.p<0?' '+bot.l+' is your weakest at '+money(bot.p)+'.':'')});}
+  /* payout forecasts */
+  accounts().forEach(function(a){var tgt=+a.target||0;if(!tgt||!a.name)return;var st=acctStats(a);if(st.profit>=tgt){out.push({k:'good',t:a.name+' has hit its profit target',p:'Check the consistency and trading day rules, then request your payout.'});return;}
+    var key=a.name.trim().toLowerCase(),from=addDays(t,-29),dp={};Object.keys(state.journal).forEach(function(k){if(k<from||(a.since&&k<a.since))return;state.journal[k].trades.forEach(function(x){if((x.acct||'').trim().toLowerCase()===key&&!isNaN(parseFloat(x.amt)))dp[k]=(dp[k]||0)+tradePnl(x);});});
+    var dv=Object.keys(dp).map(function(k){return dp[k];});if(dv.length<3)return;var pace=avg(dv),left=tgt-st.profit;
+    if(pace<=0){out.push({k:'warn',t:a.name+' is not on pace yet',p:'Your last '+dv.length+' trading days average '+money(pace)+'. Tighten up before pushing for the '+money(tgt)+' target.'});return;}
+    var need=Math.ceil(left/pace),eta=addDays(t,Math.ceil(need*7/5));
+    out.push({k:'info',t:a.name+' payout forecast',p:'At your 30 day pace of '+money(pace)+' per trading day, you need about '+need+' more trading days, around '+parse(eta).toLocaleDateString(undefined,{month:'long',day:'numeric'})+'.'+(eta<='2027-02-28'?' That is ahead of your February goal.':' That is after February, so focus on consistency over size.')});
+    var lim=+a.consistency||0;if(lim&&st.profit>0&&st.best/st.profit*100>lim)out.push({k:'warn',t:a.name+' consistency check',p:'Your best day is '+Math.round(st.best/st.profit*100)+'% of your profit, over the '+lim+'% limit. Steady days fix this faster than a big one.'});
+  });
+  /* weight pace */
+  var wi=weighIns();if(wi.length>=2){var f=wi[0],l=wi[wi.length-1],wk=(parse(l[0])-parse(f[0]))/(7*864e5);
+    if(wk>=2){var rate=(f[1]-l[1])/wk,goalRate=50/52;out.push({k:rate>=goalRate?'good':'info',t:'Weight pace',p:'You are averaging '+(rate>=0?rate.toFixed(1)+' lbs lost':Math.abs(rate).toFixed(1)+' lbs gained')+' per week. The 50 pound goal needs about '+goalRate.toFixed(1)+' a week, so you are '+(rate>=goalRate?'on or ahead of pace.':'a little behind. Small daily habits add up.')});}}
+  /* loss limit */
+  var r=risk();if(r.maxLoss>0){var hits=rangeDays(14).filter(function(k){return riskState(k).hit;});if(hits.length)out.push({k:'warn',t:'Loss limit hit '+hits.length+(hits.length===1?' time':' times')+' in two weeks',p:'Most recent: '+fmtDate(hits[hits.length-1])+'. On those days, stop after the limit and journal what happened before the next session.'});}
+  /* streaks */
+  var cur=insStreak(),best=0,run=0,ks=Object.keys(state.days).sort();if(ks.length){for(var d=ks[0];d<=t;d=addDays(d,1)){if(countFor(d)>=WIN()){run++;if(run>best)best=run;}else run=0;}}
+  if(cur>=3)out.push({k:'good',t:cur+' day streak',p:cur>=best?'This is your best streak yet. Protect it today.':'Your best is '+best+' days. '+(best-cur)+' more to beat it.'});
+  else if(best>=5&&cur===0)out.push({k:'info',t:'Restart your streak',p:'Your best streak is '+best+' days. Hit '+WIN()+' boxes today to start a new one.'});
+  /* water */
+  var g=waterGoal(),hitW=rangeDays(7).filter(function(k){var d=state.days[k];return d&&(d.water||0)>=g;}).length;
+  if(logged>=7)out.push({k:hitW>=5?'good':'info',t:'Water',p:'You hit your water goal on '+hitW+' of the last 7 days.'+(hitW<5?' Keep a bottle at your trading desk.':'')});
+  return out;
+}
+function renderInsightsTab(){
+  var box=document.getElementById('insList');if(!box)return;box.innerHTML='';
+  buildInsights().forEach(function(i){var c=document.createElement('section');c.className='ins '+i.k;var h=document.createElement('h3');h.textContent=i.t;var p=document.createElement('p');p.textContent=i.p;c.appendChild(h);c.appendChild(p);box.appendChild(c);});
+}
+
 var bkPending=null;
 function bkMsg(t){document.getElementById('bkMsg').textContent=t;}
 function backupText(){return JSON.stringify({app:'daily-tracker',version:1,exported:new Date().toISOString(),state:state});}
@@ -1571,7 +1653,7 @@ function showTab(name){
   document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-selected',b.getAttribute('data-go')===name?'true':'false');});
   document.getElementById('dayHeader').hidden=(name==='settings'||name==='charts'||name==='group');
   if(name==='group'&&typeof renderGroup==='function'){renderGroup();if(gCfg()&&(!gView||Date.now()-gView.at>60000))gLoad();}
-  if(name==='charts'&&typeof renderCharts==='function')renderCharts();
+  if(name==='charts'&&typeof renderCharts==='function'){renderInsightsTab();renderCharts();renderInsights();}
   try{localStorage.setItem(TAB_KEY,name);}catch(e){}
 }
 document.querySelectorAll('.tabbar button').forEach(function(b){b.addEventListener('click',function(){showTab(b.getAttribute('data-go'));window.scrollTo(0,0);});});
