@@ -199,6 +199,11 @@ main{padding-bottom:110px !important}
 .lockc .item{min-height:48px;padding:10px 12px;margin-bottom:6px}
 .lockbtn{width:100%;min-height:50px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer;margin-top:6px}
 .lockbtn.alt{background:transparent;color:var(--muted);border-color:var(--line);font-weight:500;min-height:42px}
+.stg{display:inline-block;margin-left:8px;font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);vertical-align:2px}
+.stg.funded{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.stg.eval{border-color:#d08a2c;color:#d08a2c}
+.pp.closed{opacity:.6}
+.pphd{margin:14px 0 8px;font-size:.98rem}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -317,8 +322,8 @@ main{padding-bottom:110px !important}
   <datalist id='atms'><option value='High ATR'><option value='Normal ATR'><option value='Low ATR'></datalist>
   <datalist id='accts'><option value='Midgard 50K'><option value='Tradeify'><option value='Apex'><option value='FFF Velocity'><option value='FFF Prime'><option value='Halcyon'></datalist>
 
-  <h2 id="ppTitle">Payout progress</h2>
-  <p class="msg" style="margin-top:0">Progress is calculated from trades logged with a matching account name.</p>
+  <h2 id="ppTitle">Accounts</h2>
+  <p class="msg" style="margin-top:0">Funded accounts track payouts, evaluations track passes. Progress comes from trades logged to each account.</p>
   <div id="ppList"></div>
   <div id="ppNew" style="display:none"></div>
   <button class="addbtn" id="ppAdd" type="button">Add an account</button>
@@ -636,7 +641,7 @@ function jTotals(){
   var names=Object.keys(acc).sort();
   if(names.length){
     var hd=document.createElement('p');hd.className='msg';hd.style.margin='0 0 6px';hd.textContent='By account (this week, all time)';ab.appendChild(hd);
-    names.forEach(function(n){var r=document.createElement('div');r.className='hrow';r.style.cursor='default';r.innerHTML='<span></span><span><b></b> <b></b></span>';r.firstChild.textContent=n+', '+acc[n].c+(acc[n].c===1?' trade':' trades');var bs=r.querySelectorAll('b');bs[0].textContent=money(acc[n].wk);bs[0].className=pnlClass(acc[n].wk);bs[1].textContent='/ '+money(acc[n].all);bs[1].className=pnlClass(acc[n].all);ab.appendChild(r);});
+    names.forEach(function(n){var r=document.createElement('div');r.className='hrow';r.style.cursor='default';r.innerHTML='<span></span><span><b></b> <b></b></span>';var stn=stageByName(n);r.firstChild.textContent=n+(stn==='eval'?' (eval)':stn==='closed'?' (closed)':'')+', '+acc[n].c+(acc[n].c===1?' trade':' trades');var bs=r.querySelectorAll('b');bs[0].textContent=money(acc[n].wk);bs[0].className=pnlClass(acc[n].wk);bs[1].textContent='/ '+money(acc[n].all);bs[1].className=pnlClass(acc[n].all);ab.appendChild(r);});
   }
   var h=document.getElementById('jHist');h.innerHTML='';
   var keys=Object.keys(state.journal).filter(function(k){return state.journal[k].trades.length>0||state.journal[k].noTrade;}).sort().reverse().slice(0,14);
@@ -1175,6 +1180,10 @@ function preMessage(){
 }
 
 /* ---------- payout progress ---------- */
+var STAGE_LABEL={eval:'Evaluation',funded:'Funded',closed:'Closed'};
+function stageOf(a){return a&&(a.stage==='eval'||a.stage==='closed')?a.stage:'funded';}
+function stageByName(n){n=(n||'').trim().toLowerCase();var a=accounts().filter(function(x){return (x.name||'').trim().toLowerCase()===n;})[0];return a?stageOf(a):'';}
+var ppShowClosed=false;
 function accounts(){var a=state.goals.accounts;if(!Array.isArray(a))a=state.goals.accounts=[];return a;}
 function acctStats(a){
   var key=(a.name||'').trim().toLowerCase(),since=a.since||'',days={};
@@ -1186,43 +1195,78 @@ var ppEditing={};
 function renderPayout(){
   var list=document.getElementById('ppList');list.innerHTML='';
   var accts=accounts();
-  if(!accts.length){var p=document.createElement('p');p.className='msg';p.textContent='Add an account and its payout rules to track how close you are.';list.appendChild(p);}
-  accts.forEach(function(a,i){
-    var s=acctStats(a),c=document.createElement('div');
+  if(!accts.length){var p=document.createElement('p');p.className='msg';p.textContent='Add your funded accounts and evaluations to track how close each one is to a payout or a pass.';list.appendChild(p);}
+  function card(a,i){
+    var st=stageOf(a),isEval=st==='eval',s=acctStats(a),c=document.createElement('div');
     var tgt=+a.target||0,minD=+a.minDays||0,lim=+a.consistency||0;
     var profitOk=tgt?s.profit>=tgt:false,daysOk=minD?s.days>=minD:true;
     var pct=s.profit>0?s.best/s.profit*100:0,consOk=!lim||(s.profit>0&&pct<=lim);
-    var ready=tgt>0&&profitOk&&daysOk&&consOk;
-    c.className='pp'+(ready?' ready':'')+(ppEditing[i]?' editing':'');
-    var h=document.createElement('div');h.className='pphead';h.innerHTML='<b></b><span class="rwtag"></span>';h.querySelector('b').textContent=a.name||'Unnamed account';
-    var tag=h.querySelector('.rwtag');tag.textContent=ready?'Ready for payout':tgt?'Not yet':'Add a target';if(ready){tag.style.background='var(--accent)';tag.style.color='var(--accent-ink)';tag.style.borderColor='var(--accent)';}
+    var ready=st!=='closed'&&tgt>0&&profitOk&&daysOk&&consOk;
+    c.className='pp'+(ready?' ready':'')+(ppEditing[i]?' editing':'')+(st==='closed'?' closed':'');
+    var h=document.createElement('div');h.className='pphead';h.innerHTML='<span><b></b><span class="stg"></span></span><span class="rwtag"></span>';
+    h.querySelector('b').textContent=a.name||'Unnamed account';var sg=h.querySelector('.stg');sg.textContent=STAGE_LABEL[st];sg.className='stg '+st;
+    var tag=h.querySelector('.rwtag');
+    tag.textContent=st==='closed'?'Closed':ready?(isEval?'Ready to pass':'Ready for payout'):tgt?(isEval?'In progress':'Not yet'):'Add a target';
+    if(ready){tag.style.background='var(--accent)';tag.style.color='var(--accent-ink)';tag.style.borderColor='var(--accent)';}
     c.appendChild(h);
-    if(tgt){var bar=document.createElement('div');bar.className='bar';bar.innerHTML='<div class="fill"></div>';bar.firstChild.style.width=Math.max(0,Math.min(100,s.profit/tgt*100))+'%';c.appendChild(bar);}
+    if(tgt&&st!=='closed'){var bar=document.createElement('div');bar.className='bar';bar.innerHTML='<div class="fill"></div>';bar.firstChild.style.width=Math.max(0,Math.min(100,s.profit/tgt*100))+'%';c.appendChild(bar);}
     function row(label,val,ok){var r=document.createElement('div');r.className='pprow';r.innerHTML='<span></span><span></span>';r.firstChild.textContent=label;r.lastChild.textContent=val;if(ok!==undefined)r.lastChild.className=ok?'ok':'bad';c.appendChild(r);}
-    row('Profit',money(s.profit)+(tgt?' of $'+tgt.toLocaleString():''),tgt&&profitOk?true:(s.profit<0?false:undefined));
-    if(tgt&&!profitOk)row('Still needed','$'+Math.round(tgt-s.profit).toLocaleString());
+    row(isEval?'Profit toward pass':'Profit toward payout',money(s.profit)+(tgt?' of $'+tgt.toLocaleString():''),tgt&&profitOk?true:(s.profit<0?false:undefined));
+    if(tgt&&!profitOk&&st!=='closed')row('Still needed','$'+Math.round(tgt-s.profit).toLocaleString());
     row('Trading days',s.days+(minD?' of '+minD:''),minD?daysOk:undefined);
     if(lim)row('Best day vs profit',s.profit>0?Math.round(pct)+'% (limit '+lim+'%)':'Needs profit first',s.profit>0?consOk:false);
     if(lim&&s.profit>0&&!consOk)row('To fix it','Grow total profit to $'+Math.ceil(s.best/lim*100).toLocaleString());
     if(a.since)row('Counting since',parse(a.since).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}));
+    if(a.passedOn)row('Passed evaluation',parse(a.passedOn).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}));
+    if(a.payouts)row('Payouts received',String(a.payouts)+(a.lastPayout?', last '+parse(a.lastPayout).toLocaleDateString(undefined,{month:'short',day:'numeric'}):''));
+    var msg=document.createElement('p');msg.className='msg';msg.setAttribute('aria-live','polite');
+    if(ready){
+      var act=document.createElement('button');act.type='button';act.className='lockbtn';
+      act.textContent=isEval?'I passed. Move to funded':'I received this payout';
+      act.addEventListener('click',function(){
+        if(!act.dataset.arm){act.dataset.arm='1';act.textContent=isEval?'Tap again to confirm you passed':'Tap again to confirm the payout';return;}
+        var t=today();
+        if(isEval){a.stage='funded';a.passedOn=t;a.since=addDays(t,1);delete a.target;ppEditing={};ppEditing[i]=true;ppMsg='Congrats on passing. Enter the funded account’s payout rules below. Progress starts fresh tomorrow.';}
+        else{a.payouts=(a.payouts||0)+1;a.lastPayout=t;a.since=addDays(t,1);ppMsg='Payout logged. Progress starts fresh tomorrow.';}
+        save();renderPayout();renderJournal();
+      });
+      c.appendChild(act);
+    }
+    if(ppMsg&&ppEditing[i]){msg.textContent=ppMsg;}
+    c.appendChild(msg);
     var ed=document.createElement('div');ed.className='ppedit';
+    var sd=document.createElement('div');sd.className='fld';var sl=document.createElement('span');sl.textContent='Stage';sd.appendChild(sl);
+    sd.appendChild(seg([['eval','Evaluation'],['funded','Funded'],['closed','Closed']],st,function(v){a.stage=v;save();renderPayout();renderJournal();}));ed.appendChild(sd);
     function f(label,val,ph,mode,type,cb){var d=document.createElement('div');d.className='fld';var sp=document.createElement('span');sp.textContent=label;var inp=document.createElement('input');inp.type=type||'text';if(mode)inp.setAttribute('inputmode',mode);inp.placeholder=ph;inp.value=val==null?'':val;inp.addEventListener('change',function(){cb(inp.value);save();renderPayout();});d.appendChild(sp);d.appendChild(inp);return d;}
     ed.appendChild(f('Account name (match your journal)',a.name,'Midgard 50K','','text',function(v){a.name=v.trim();}));
     var g=document.createElement('div');g.className='g2';
-    g.appendChild(f('Profit target ($)',a.target,'3000','decimal','text',function(v){var n=parseFloat(v);if(n>0)a.target=Math.round(n);else delete a.target;}));
+    g.appendChild(f(isEval?'Profit target to pass ($)':'Payout target ($)',a.target,isEval?'3000':'1000','decimal','text',function(v){var n=parseFloat(v);if(n>0)a.target=Math.round(n);else delete a.target;}));
     g.appendChild(f('Minimum trading days',a.minDays,'5','numeric','text',function(v){var n=parseInt(v,10);if(n>0)a.minDays=n;else delete a.minDays;}));
     g.appendChild(f('Consistency limit (%)',a.consistency,'40','decimal','text',function(v){var n=parseFloat(v);if(n>0&&n<=100)a.consistency=n;else delete a.consistency;}));
     g.appendChild(f('Count trades since',a.since,'','','date',function(v){if(v)a.since=v;else delete a.since;}));
     ed.appendChild(g);
-    var hint=document.createElement('p');hint.className='msg';hint.textContent='After a payout, set Count trades since to the next day so progress starts fresh.';ed.appendChild(hint);
+    var hint=document.createElement('p');hint.className='msg';hint.textContent=isEval?'When you pass, use the button on this card to move it to funded.':'When a payout lands, use the button on this card and progress starts fresh the next day.';ed.appendChild(hint);
     var dl=document.createElement('button');dl.type='button';dl.className='del';dl.style.marginTop='6px';dl.textContent='Remove account';
-    dl.addEventListener('click',function(){accts.splice(i,1);ppEditing={};save();renderPayout();});ed.appendChild(dl);
+    dl.addEventListener('click',function(){if(!dl.dataset.arm){dl.dataset.arm='1';dl.textContent='Tap again to remove. Trades stay in your journal.';return;}accts.splice(i,1);ppEditing={};save();renderPayout();renderJournal();});ed.appendChild(dl);
     c.appendChild(ed);
     var tb=document.createElement('div');tb.className='rwbtns';var eb=document.createElement('button');eb.type='button';eb.textContent=ppEditing[i]?'Done':'Edit rules';
-    eb.addEventListener('click',function(){ppEditing[i]=!ppEditing[i];renderPayout();});tb.appendChild(eb);c.appendChild(tb);
-    list.appendChild(c);
-  });
+    eb.addEventListener('click',function(){ppEditing[i]=!ppEditing[i];ppMsg='';renderPayout();});tb.appendChild(eb);c.appendChild(tb);
+    return c;
+  }
+  function section(title,stage,note){
+    var idx=[];accts.forEach(function(a,i){if(stageOf(a)===stage)idx.push(i);});if(!idx.length)return;
+    var h=document.createElement('h3');h.className='pphd';h.textContent=title+' ('+idx.length+')';list.appendChild(h);
+    if(note){var n=document.createElement('p');n.className='msg';n.style.margin='-4px 0 8px';n.textContent=note;list.appendChild(n);}
+    idx.forEach(function(i){list.appendChild(card(accts[i],i));});
+  }
+  section('Funded accounts','funded','Working toward a payout.');
+  section('Evaluations','eval','Working toward a pass.');
+  var closed=[];accts.forEach(function(a,i){if(stageOf(a)==='closed')closed.push(i);});
+  if(closed.length){var tg=document.createElement('button');tg.type='button';tg.className='del';tg.style.margin='4px 0 10px';tg.textContent=(ppShowClosed?'Hide':'Show')+' closed accounts ('+closed.length+')';
+    tg.addEventListener('click',function(){ppShowClosed=!ppShowClosed;renderPayout();});list.appendChild(tg);
+    if(ppShowClosed)closed.forEach(function(i){list.appendChild(card(accts[i],i));});}
 }
+var ppMsg='';
 document.getElementById('ppAdd').addEventListener('click',function(){var n=document.getElementById('ppNew');renderNewAcct();n.style.display='block';n.scrollIntoView({block:'nearest'});});
 
 /* ---------- insights ---------- */
@@ -1513,24 +1557,29 @@ var FIRMS=['Tradeify','Midgard','Lucid','TPT','MFFU','Apex','FFF','Halcyon','Oth
 var FIRM_FULL={TPT:'Take Profit Trader',MFFU:'MyFundedFutures',FFF:'Funded Futures Family'};
 var SIZES=['25K','50K','100K','150K','250K',''];
 function acctNames(){
-  var seen={},out=[];
-  accounts().forEach(function(a){var n=(a.name||'').trim();if(n&&!seen[n.toLowerCase()]){seen[n.toLowerCase()]=1;out.push(n);}});
+  var seen={},out=[],accts=accounts();
+  ['funded','eval'].forEach(function(st){accts.forEach(function(a){if(stageOf(a)!==st)return;var n=(a.name||'').trim();if(n&&!seen[n.toLowerCase()]){seen[n.toLowerCase()]=1;out.push(n);}});});
   return out;
 }
 function acctSelect(t){
   var wrap=document.createElement('div'),sel=document.createElement('select'),other=document.createElement('input');
   sel.setAttribute('aria-label','Account');other.placeholder='Type the account name';other.setAttribute('aria-label','Account name');other.style.marginTop='6px';
-  var names=acctNames(),presets=names.length?[]:['Tradeify','Midgard 50K','Lucid','TPT','MFFU','Apex'];
-  var list=names.concat(presets),cur=(t.acct||'').trim();
-  if(cur&&!list.some(function(n){return n.toLowerCase()===cur.toLowerCase();}))list.unshift(cur);
+  var names=acctNames(),presets=names.length?[]:['Tradeify','Midgard 50K','Lucid','TPT','MFFU','Apex'],cur=(t.acct||'').trim();
   var o0=document.createElement('option');o0.value='';o0.textContent='Choose an account';sel.appendChild(o0);
-  list.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;if(n.toLowerCase()===cur.toLowerCase())o.selected=true;sel.appendChild(o);});
+  function opt(parent,n){var o=document.createElement('option');o.value=n;o.textContent=n;if(n.toLowerCase()===cur.toLowerCase())o.selected=true;parent.appendChild(o);}
+  var known=names.concat(presets).some(function(n){return n.toLowerCase()===cur.toLowerCase();});
+  if(cur&&!known)opt(sel,cur);
+  if(names.length){
+    [['funded','Funded'],['eval','Evaluations']].forEach(function(gp){var ns=names.filter(function(n){return stageByName(n)===gp[0];});if(!ns.length)return;
+      var og=document.createElement('optgroup');og.label=gp[1];ns.forEach(function(n){opt(og,n);});sel.appendChild(og);});
+  }else presets.forEach(function(n){opt(sel,n);});
   var oo=document.createElement('option');oo.value='__other';oo.textContent='Other account…';sel.appendChild(oo);
   other.style.display='none';
   sel.addEventListener('change',function(){if(sel.value==='__other'){other.style.display='block';other.value='';other.focus();return;}other.style.display='none';t.acct=sel.value;save();jTotals();});
   other.addEventListener('change',function(){var v=other.value.trim();if(!v)return;t.acct=v;save();jTotals();});
   wrap.appendChild(sel);wrap.appendChild(other);
-  if(!names.length){var h=document.createElement('p');h.className='msg';h.style.margin='4px 0 0';h.textContent='Tip: add your accounts under Payout progress so this list shows exactly yours.';wrap.appendChild(h);}
+  if(!names.length){var h=document.createElement('p');h.className='msg';h.style.margin='4px 0 0';h.textContent='Tip: add your accounts under Accounts so this list shows exactly yours.';wrap.appendChild(h);}
+  else if(cur&&stageByName(cur)==='closed'){var hc=document.createElement('p');hc.className='msg';hc.style.margin='4px 0 0';hc.textContent='This account is marked closed.';wrap.appendChild(hc);}
   return wrap;
 }
 function renderNewAcct(){
@@ -1540,13 +1589,15 @@ function renderNewAcct(){
   var firm=document.createElement('select');FIRMS.forEach(function(f){var o=document.createElement('option');o.value=f;o.textContent=FIRM_FULL[f]?f+' ('+FIRM_FULL[f]+')':f;firm.appendChild(o);});
   var custom=document.createElement('input');custom.placeholder='Firm name';
   var size=document.createElement('select');SIZES.forEach(function(z){var o=document.createElement('option');o.value=z;o.textContent=z||'No size';if(z==='50K')o.selected=true;size.appendChild(o);});
-  var tag=document.createElement('input');tag.placeholder='Optional, like #2 or Eval';tag.maxLength=12;
+  var tag=document.createElement('input');tag.placeholder='Optional, like #2';tag.maxLength=12;
+  var stage='eval';var stSeg=seg([['eval','Evaluation'],['funded','Funded']],stage,function(v){stage=v;upd();});
+  box.appendChild(lab('Stage',stSeg));
   box.appendChild(lab('Prop firm',firm));var cw=lab('Firm name',custom);cw.style.display='none';box.appendChild(cw);
   var g=document.createElement('div');g.className='g2';g.appendChild(lab('Account size',size));g.appendChild(lab('Label',tag));box.appendChild(g);
   firm.addEventListener('change',function(){cw.style.display=firm.value==='Other'?'block':'none';});
   var prev=document.createElement('p');prev.className='msg';box.appendChild(prev);
   function name(){var f=firm.value==='Other'?custom.value.trim():firm.value;return [f,size.value,tag.value.trim()].filter(Boolean).join(' ');}
-  function upd(){prev.textContent=name()?'Will appear as: '+name():'Enter a firm name.';}
+  function upd(){prev.className='msg';prev.textContent=name()?'Will appear as: '+name()+' ('+STAGE_LABEL[stage]+')':'Enter a firm name.';}
   [firm,custom,size,tag].forEach(function(e){e.addEventListener('input',upd);e.addEventListener('change',upd);});upd();
   var row=document.createElement('div');row.className='rwbtns';
   var add=document.createElement('button');add.type='button';add.textContent='Add account';
@@ -1554,7 +1605,7 @@ function renderNewAcct(){
   add.addEventListener('click',function(){var n=name();if(!n){prev.textContent='Enter a firm name.';return;}var a=accounts();
     if(a.some(function(x){return (x.name||'').toLowerCase()===n.toLowerCase();})){prev.className='msg bad';prev.textContent='You already have an account named '+n+'. Add a label like #2.';return;}
     if(a.length>=15){prev.textContent='You can track up to 15 accounts.';return;}
-    a.push({name:n});ppEditing={};ppEditing[a.length-1]=true;box.style.display='none';save();renderPayout();renderJournal();});
+    a.push({name:n,stage:stage});ppEditing={};ppEditing[a.length-1]=true;box.style.display='none';save();renderPayout();renderJournal();});
   cancel.addEventListener('click',function(){box.style.display='none';});
   row.appendChild(add);row.appendChild(cancel);box.appendChild(row);
 }
@@ -1608,12 +1659,12 @@ function buildInsights(){
   var sk=Object.keys(bs).filter(function(k){return bs[k].n>=4;});
   if(sk.length>=2){sk.sort(function(a,b){return bs[b].p-bs[a].p;});var top=bs[sk[0]],bot=bs[sk[sk.length-1]];if(top.p>0)out.push({k:'good',t:top.l+' is your best setup',p:Math.round(top.w/top.n*100)+'% wins over '+top.n+' trades, '+money(top.p)+'.'+(bot.p<0?' '+bot.l+' is your weakest at '+money(bot.p)+'.':'')});}
   /* payout forecasts */
-  accounts().forEach(function(a){var tgt=+a.target||0;if(!tgt||!a.name)return;var st=acctStats(a);if(st.profit>=tgt){out.push({k:'good',t:a.name+' has hit its profit target',p:'Check the consistency and trading day rules, then request your payout.'});return;}
+  accounts().forEach(function(a){var tgt=+a.target||0;if(!tgt||!a.name||stageOf(a)==='closed')return;var isEv=stageOf(a)==='eval',st=acctStats(a);if(st.profit>=tgt){out.push({k:'good',t:a.name+(isEv?' has hit its pass target':' has hit its payout target'),p:isEv?'Check the minimum days and consistency rule. Once you pass, tap I passed on the account card.':'Check the consistency and trading day rules, then request your payout.'});return;}
     var key=a.name.trim().toLowerCase(),from=addDays(t,-29),dp={};Object.keys(state.journal).forEach(function(k){if(k<from||(a.since&&k<a.since))return;state.journal[k].trades.forEach(function(x){if((x.acct||'').trim().toLowerCase()===key&&!isNaN(parseFloat(x.amt)))dp[k]=(dp[k]||0)+tradePnl(x);});});
     var dv=Object.keys(dp).map(function(k){return dp[k];});if(dv.length<3)return;var pace=avg(dv),left=tgt-st.profit;
     if(pace<=0){out.push({k:'warn',t:a.name+' is not on pace yet',p:'Your last '+dv.length+' trading days average '+money(pace)+'. Tighten up before pushing for the '+money(tgt)+' target.'});return;}
     var need=Math.ceil(left/pace),eta=addDays(t,Math.ceil(need*7/5));
-    out.push({k:'info',t:a.name+' payout forecast',p:'At your 30 day pace of '+money(pace)+' per trading day, you need about '+need+' more trading days, around '+parse(eta).toLocaleDateString(undefined,{month:'long',day:'numeric'})+'.'+(eta<='2027-02-28'?' That is ahead of your February goal.':' That is after February, so focus on consistency over size.')});
+    out.push({k:'info',t:a.name+(isEv?' pass forecast':' payout forecast'),p:'At your 30 day pace of '+money(pace)+' per trading day, you need about '+need+' more trading days'+(isEv?' to pass':'')+', around '+parse(eta).toLocaleDateString(undefined,{month:'long',day:'numeric'})+'.'+(isEv?' Passing is about protecting the drawdown, so keep size steady.':(eta<='2027-02-28'?' That is ahead of your February goal.':' That is after February, so focus on consistency over size.'))});
     var lim=+a.consistency||0;if(lim&&st.profit>0&&st.best/st.profit*100>lim)out.push({k:'warn',t:a.name+' consistency check',p:'Your best day is '+Math.round(st.best/st.profit*100)+'% of your profit, over the '+lim+'% limit. Steady days fix this faster than a big one.'});
   });
   /* weight pace */
