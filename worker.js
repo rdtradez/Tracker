@@ -66,12 +66,13 @@ function localParts(tz, now) {
 
 // Decide whether a reminder of this type should fire, given today's status from the app.
 function needsReminder(type, status, local) {
-  const s = status && status.date === local.date ? status : { anything: false, remaining: 99, trades: false, water: false, noTrade: false };
+  const s = status && status.date === local.date ? status : { anything: false, remaining: 99, trades: false, water: false, noTrade: false, locked: false };
   const weekday = ["Mon", "Tue", "Wed", "Thu", "Fri"].includes(local.weekday);
   if (type === "checkin") return !s.anything;
   if (type === "finish") return s.remaining > 0;
   if (type === "trades") return weekday && !s.noTrade && !s.trades;
   if (type === "water") return !s.water;
+  if (type === "lock") return weekday && !s.locked;
   return false;
 }
 
@@ -260,7 +261,7 @@ export default {
     if (url.pathname === "/subscribe") {
       if (!body.subscription || !validEndpoint(body.subscription.endpoint)) return json({ error: "That is not a browser notification address." }, 400);
       const reminders = (Array.isArray(body.reminders) ? body.reminders : []).slice(0, 12).map((r) => ({
-        id: String(r.id || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40), type: ["checkin", "finish", "trades", "water"].includes(r.type) ? r.type : "checkin", time: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.time)) ? String(r.time) : "20:00",
+        id: String(r.id || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40), type: ["checkin", "finish", "trades", "water", "lock"].includes(r.type) ? r.type : "checkin", time: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.time)) ? String(r.time) : "20:00",
       }));
       if (!sub) {
         if (subs.length >= MAX_SUBS) return json({ error: "Too many devices" }, 429);
@@ -270,7 +271,7 @@ export default {
       sub.subscription = { endpoint: String(body.subscription.endpoint).slice(0, 800) };
       sub.tz = String(body.tz || "UTC").slice(0, 60);
       sub.reminders = reminders;
-      if (body.status && typeof body.status === "object") { const s = body.status; sub.status = { date: String(s.date || "").slice(0, 10), anything: !!s.anything, remaining: Math.max(0, Math.min(99, Number(s.remaining) || 0)), trades: !!s.trades, water: !!s.water, noTrade: !!s.noTrade }; }
+      if (body.status && typeof body.status === "object") { const s = body.status; sub.status = { date: String(s.date || "").slice(0, 10), anything: !!s.anything, remaining: Math.max(0, Math.min(99, Number(s.remaining) || 0)), trades: !!s.trades, water: !!s.water, noTrade: !!s.noTrade, locked: !!s.locked }; }
       await saveSubs(env, subs);
       return json({ ok: true });
     }
@@ -278,7 +279,7 @@ export default {
     if (url.pathname === "/status") {
       if (!sub) return json({ error: "Not subscribed" }, 404);
       const s = body.status || {};
-      sub.status = { date: String(s.date || "").slice(0, 10), anything: !!s.anything, remaining: Math.max(0, Math.min(99, Number(s.remaining) || 0)), trades: !!s.trades, water: !!s.water, noTrade: !!s.noTrade };
+      sub.status = { date: String(s.date || "").slice(0, 10), anything: !!s.anything, remaining: Math.max(0, Math.min(99, Number(s.remaining) || 0)), trades: !!s.trades, water: !!s.water, noTrade: !!s.noTrade, locked: !!s.locked };
       await saveSubs(env, subs);
       return json({ ok: true });
     }

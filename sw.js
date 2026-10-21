@@ -1,4 +1,4 @@
-var CACHE='tracker-v14';
+var CACHE='tracker-v16';
 var FILES=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png','icon-maskable-512.png'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(FILES);}).then(function(){return self.skipWaiting();}));});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k.indexOf('tracker-v')===0&&k!==CACHE;}).map(function(k){return caches.delete(k);}));}).then(function(){return self.clients.claim();}));});
@@ -11,6 +11,7 @@ function compose(type,status){
   var fresh=status&&status.date===localDate();
   if(type==='test')return {t:'Notifications are working',b:'You will get reminders at the times you picked, only when something is missing.'};
   if(type==='trades')return {t:'Hey, you haven\u2019t entered any trades today',b:'Log your trades, or mark today as a no trade day.'};
+  if(type==='lock')return {t:'Lock your accounts',b:'Done trading? Lock every account so you\u2019re not tempted to trade again.'};
   if(type==='water')return {t:'Hey, don\u2019t forget your water',b:'You\u2019re under your water goal for today.'};
   if(type==='finish'){var n=fresh?status.remaining:0;return {t:n?'You still have '+n+(n===1?' thing':' things')+' left today':'You still have a few things left today',b:'Open Daily Edge to finish your day.'};}
   return {t:'Hey, you haven\u2019t checked in today',b:'Open Daily Edge and log your day.'};
