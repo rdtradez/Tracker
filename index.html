@@ -155,7 +155,7 @@ main{padding-bottom:110px !important}
 #splash .sp-name{font-size:2rem;font-weight:700;letter-spacing:-.02em;margin:0}
 #splash .sp-quote{font-size:1.15rem;color:var(--muted);margin:14px 0 0;font-style:italic}
 #splash .sp-motto{font-size:.95rem;color:var(--accent);margin:12px 0 0;font-weight:600;letter-spacing:.02em}
-#splash .sp-tq{font-size:1.08rem;line-height:1.5;color:var(--ink);margin:22px 0 0;font-style:italic}
+#splash .sp-tq{font-size:1.12rem;line-height:1.5;color:var(--ink);margin:18px 0 0;font-style:italic}
 #splash .sp-by{font-size:.9rem;color:var(--muted);margin:8px 0 0}
 #splash .sp-line{width:40px;height:3px;border-radius:2px;background:var(--accent);margin:14px auto 0}
 @media (prefers-reduced-motion:reduce){#splash{transition:none}}
@@ -220,7 +220,6 @@ main{padding-bottom:110px !important}
     <div class="sp-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
     <p class="sp-name">Daily Edge</p>
     <div class="sp-line" aria-hidden="true"></div>
-    <p class="sp-motto">Discipline over dopamine.</p>
     <p class="sp-tq" id="spTq"></p>
     <p class="sp-by" id="spBy"></p>
     <p class="sp-hi" id="spHi"></p>
@@ -1489,7 +1488,7 @@ function greetWord(){var h=new Date().getHours();return h<12?'Good morning':h<17
 function renderProfile(){
   var u=userName(),inp=document.getElementById('profUser');if(inp&&document.activeElement!==inp)inp.value=u;
   var g=document.getElementById('greet');
-  if(g){g.innerHTML='';if(u){g.appendChild(document.createTextNode(greetWord()+', '));var b=document.createElement('b');b.textContent=u;g.appendChild(b);g.appendChild(document.createTextNode('. Discipline over dopamine.'));}
+  if(g){g.innerHTML='';if(u){g.appendChild(document.createTextNode(greetWord()+', '));var b=document.createElement('b');b.textContent=u;g.appendChild(b);g.appendChild(document.createTextNode('.'));}
     else{g.appendChild(document.createTextNode('Pick a username in Settings so your greetings and group know it’s you. '));var a=document.createElement('button');a.type='button';a.textContent='Set username';a.addEventListener('click',function(){showTab('settings');var el=document.getElementById('profTitle');if(el)el.scrollIntoView({block:'start'});setTimeout(function(){document.getElementById('profUser').focus();},50);});g.appendChild(a);}}
   var hi=document.getElementById('spHi');if(hi)hi.textContent=u?'Welcome back, '+u+'.':'';
 }
@@ -1769,7 +1768,7 @@ document.addEventListener('visibilitychange',function(){
   awayAt=0;
 });
 load();view=today();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}render();startSync();
-var TRADER_QUOTES=[["The elements of good trading are: one, cutting losses; two, cutting losses; and three, cutting losses.", "Ed Seykota"], ["Win or lose, everybody gets what they want out of the market.", "Ed Seykota"], ["Losers average losers.", "Paul Tudor Jones"], ["Don’t focus on making money; focus on protecting what you have.", "Paul Tudor Jones"], ["It’s not whether you’re right or wrong that’s important, but how much money you make when you’re right and how much you lose when you’re wrong.", "George Soros"], ["It never was my thinking that made the big money for me. It always was my sitting.", "Jesse Livermore"], ["There is nothing new in Wall Street. There can’t be, because speculation is as old as the hills.", "Jesse Livermore"], ["I just wait until there is money lying in the corner, and all I have to do is go over there and pick it up.", "Jim Rogers"], ["Risk comes from not knowing what you’re doing.", "Warren Buffett"], ["The four most dangerous words in investing are: this time it’s different.", "Sir John Templeton"], ["Plan your trade and trade your plan.", "Trading proverb"], ["Cut your losses short and let your winners run.", "Trading proverb"], ["The best trade is sometimes no trade at all.", "Trading proverb"], ["Protect the account first. Profits come second.", "Daily Edge"]];
+var TRADER_QUOTES=[["Discipline over dopamine.","Daily Edge"],["The elements of good trading are: one, cutting losses; two, cutting losses; and three, cutting losses.", "Ed Seykota"], ["Win or lose, everybody gets what they want out of the market.", "Ed Seykota"], ["Losers average losers.", "Paul Tudor Jones"], ["Don’t focus on making money; focus on protecting what you have.", "Paul Tudor Jones"], ["It’s not whether you’re right or wrong that’s important, but how much money you make when you’re right and how much you lose when you’re wrong.", "George Soros"], ["It never was my thinking that made the big money for me. It always was my sitting.", "Jesse Livermore"], ["There is nothing new in Wall Street. There can’t be, because speculation is as old as the hills.", "Jesse Livermore"], ["I just wait until there is money lying in the corner, and all I have to do is go over there and pick it up.", "Jim Rogers"], ["Risk comes from not knowing what you’re doing.", "Warren Buffett"], ["The four most dangerous words in investing are: this time it’s different.", "Sir John Templeton"], ["Plan your trade and trade your plan.", "Trading proverb"], ["Cut your losses short and let your winners run.", "Trading proverb"], ["The best trade is sometimes no trade at all.", "Trading proverb"], ["Protect the account first. Profits come second.", "Daily Edge"]];
 function nextQuote(){
   var n=TRADER_QUOTES.length,order=null,pos=0;
   try{order=JSON.parse(localStorage.getItem('de-q-order')||'null');pos=parseInt(localStorage.getItem('de-q-pos')||'0',10)||0;}catch(e){}
@@ -1781,7 +1780,7 @@ function nextQuote(){
 }
 (function(){var sp=document.getElementById('splash');if(!sp)return;try{renderProfile();}catch(e){}var done=false;
   var q=nextQuote(),tq=document.getElementById('spTq'),by=document.getElementById('spBy');
-  if(tq){tq.textContent='\u201c'+q[0]+'\u201d';by.textContent=q[1];sp.setAttribute('aria-label','Daily Edge. Discipline over dopamine. '+q[0]+' '+q[1]+'.');}
+  if(tq){tq.textContent='\u201c'+q[0]+'\u201d';by.textContent=q[1];sp.setAttribute('aria-label','Daily Edge. '+q[0]+' '+q[1]+'.');}
   var ms=Math.min(5200,2200+q[0].length*28);
   function hide(){if(done)return;done=true;sp.classList.add('gone');setTimeout(function(){sp.style.display='none';},500);}
   sp.addEventListener('click',hide);setTimeout(hide,ms);})();
