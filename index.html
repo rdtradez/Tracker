@@ -473,6 +473,7 @@ h2.sech .sum{margin-left:auto;font-weight:500;font-size:.85rem;color:var(--muted
     <div id="aiAskW" hidden>
       <div class="fld" style="margin:10px 0 0"><span>Ask a follow-up</span><textarea id="aiQ" maxlength="400" style="min-height:60px" placeholder="Like: why do my Mondays go badly?"></textarea></div>
       <div class="rwbtns"><button id="aiAsk" type="button">Ask</button></div>
+      <div id="aiAns" class="ins" hidden style="white-space:pre-wrap;margin-top:8px"></div>
     </div>
   </section>
 
@@ -2400,18 +2401,28 @@ function aiData(){
     if(j){if(j.noTrade)bits.push('no trade day'+(j.ntReason?' ('+j.ntReason+')':''));
       if(j.pre){var no=PRE.filter(function(p){return j.pre[p[0]]==='no';}).map(function(p){return p[1];});var yes=PRE.filter(function(p){return j.pre[p[0]]==='yes';}).length;if(yes||no.length)bits.push('pre-trade check '+yes+' yes'+(no.length?', no on: '+no.join(', '):''));}
       if(j.mb)bits.push('mood before '+j.mb);if(j.ma)bits.push('mood after '+j.ma);
-      j.trades.forEach(function(x,n){var p=tradePnl(x);bits.push('trade '+(n+1)+': '+tradeAccts(x).join('+')+(x.dir?' '+x.dir:'')+(x.inst?' '+x.inst:'')+(x.time?' at '+x.time:'')+(x.atm?' ATM '+x.atm:'')+(x.setup?' setup "'+x.setup.slice(0,60)+'"':'')+' P&L $'+Math.round(p)+(x.plan?' plan '+(x.plan==='yes'?'followed':'broken'):'')+(x.after?' note "'+x.after.slice(0,80)+'"':''));});
+      j.trades.forEach(function(x,n){var p=tradePnl(x),ta=tradeAccts(x),pa=ta.length?pnlFor(x,ta[0]):p,rk=typeof atmRiskUsd==='function'?atmRiskUsd(x):null;bits.push('trade '+(n+1)+': '+ta.join('+')+(x.dir?' '+x.dir:'')+(x.inst?' '+x.inst:'')+(x.time?' at '+x.time:'')+(x.atm?' ATM '+x.atm:'')+(x.setup?' setup "'+x.setup.slice(0,60)+'"':'')+(ta.length>1?' copied to '+ta.length+' accounts, P&L $'+Math.round(pa)+' per account ($'+Math.round(p)+' total)':' P&L $'+Math.round(p))+(rk!==null&&rk>0?' risk $'+Math.round(rk)+' per account':'')+(x.plan?' plan '+(x.plan==='yes'?'followed':'broken'):'')+(x.after?' note "'+x.after.slice(0,80)+'"':''));});
       if(j.lock&&j.lock.at)bits.push('locked accounts');if(j.afterLock)bits.push('traded after locking '+j.afterLock+'x');
       if(j.well)bits.push('did well "'+j.well.slice(0,120)+'"');if(j.mis)bits.push('mistake "'+j.mis.slice(0,120)+'"');if(j.tom)bits.push('tomorrow "'+j.tom.slice(0,120)+'"');}
     if(bits.length)L.push(k+' '+dw+': '+bits.join('; '));}
   return L.join('\n').slice(0,90000);
 }
 /* Same coaching rules the service uses; only needed when running inside the Claude app. */
-var AI_RULES='You are the coach inside Daily Edge, a habit and trading journal app for futures prop firm traders working toward payouts while building healthy habits. Below is the trader’s logged data. '+
- 'Write 4 to 6 insights they can act on. Each one should point to a specific pattern in the data with the numbers that show it (dates, dollar amounts, counts), say why it matters, and give one concrete action. Cover trading first (rule breaks, setups, times of day, sizing against drawdown room, account progress toward targets and payouts, locking after trading), then health and habits, and any link between the two (for example sleep, mood or skipped checks on losing days). '+
- 'Be direct and honest, like a good trading coach; do not sugarcoat losses or broken rules, and do not invent data that is not there. If there is too little data for something, say what to log to find out. Do not give buy or sell calls on markets. '+
- 'Format: plain text only, no markdown symbols, no asterisks, no bullet characters, no dashes as punctuation. Number each insight like "1." and start it with a short title on its own line. End with one line that starts with "Tomorrow:" naming the single most important thing to do.';
+var AI_RULES='You are the coach inside Daily Edge, a habit and trading journal app for futures prop firm traders working toward payouts while building healthy habits. Below is the trader\u2019s logged data. P&L on copied trades is listed per account. Pick the 3 patterns that matter most right now, trading first, then health and habits or a link between the two. Be direct and honest like a good trading coach; do not sugarcoat, do not invent data, and do not give buy or sell calls. '+
+ 'Reply with ONLY a JSON object, no other text: {"tomorrow": string, "insights": [{"title": string, "why": string, "action": string}]}. Exactly 3 insights, the 3 that matter most, most important first. title: at most 6 words. why: one or two short sentences with the specific numbers from the data that show the pattern. action: one short sentence starting with a verb. tomorrow: one short sentence, the single most important thing to do next session. Keep the whole reply under 170 words. Plain words only: no markdown, no asterisks, no dashes as punctuation.';
 var aiHist=[],aiData0='',aiCtl=null;
+function aiParse(t){if(typeof t!=='string')return null;var i=t.indexOf('{'),k=t.lastIndexOf('}');if(i<0||k<=i)return null;
+  try{var o=JSON.parse(t.slice(i,k+1));if(!o||!Array.isArray(o.insights)||!o.insights.length)return null;
+    return {tomorrow:String(o.tomorrow||'').slice(0,300),insights:o.insights.slice(0,5).filter(function(x){return x&&typeof x==='object';}).map(function(x){return {title:String(x.title||'').slice(0,80),why:String(x.why||'').slice(0,500),action:String(x.action||'').slice(0,300)};})};}catch(e){return null;}}
+function aiPlain(t){var o=aiParse(t);if(!o)return t;return o.insights.map(function(x,i){return (i+1)+'. '+x.title+'\n'+x.why+'\nDo this: '+x.action;}).join('\n\n')+(o.tomorrow?'\n\nTomorrow: '+o.tomorrow:'');}
+function aiShow(t){var out=document.getElementById('aiOut');out.innerHTML='';var o=aiParse(t);
+  if(!o){out.style.whiteSpace='pre-wrap';out.textContent=t;return;}
+  out.style.whiteSpace='normal';
+  if(o.tomorrow){var tm=document.createElement('div');tm.className='ins good';tm.style.margin='0 0 8px';var tb=document.createElement('b');tb.textContent='Tomorrow';var tp=document.createElement('p');tp.style.margin='4px 0 0';tp.textContent=o.tomorrow;tm.appendChild(tb);tm.appendChild(tp);out.appendChild(tm);}
+  o.insights.forEach(function(x,i){var c=document.createElement('div');c.className='ins';c.style.margin='0 0 8px';var b=document.createElement('b');b.textContent=(i+1)+'. '+x.title;c.appendChild(b);
+    var w=document.createElement('p');w.style.margin='4px 0 0';w.textContent=x.why;c.appendChild(w);
+    if(x.action){var ac=document.createElement('p');ac.style.margin='6px 0 0';var s1=document.createElement('b');s1.textContent='Do this: ';ac.appendChild(s1);ac.appendChild(document.createTextNode(x.action));c.appendChild(ac);}
+    out.appendChild(c);});}
 function aiInClaude(){return !!(window.claude&&typeof claude.use==='function');}
 function aiErr(code){return code==='not_granted'||code==='sampling_disabled'||code==='not_declared'||code==='capability_disabled'?'Insights aren’t allowed for this page. You can turn them on from the page’s Permissions menu.':
   code==='rate_limited'?'You’ve used today’s insights. Try again tomorrow.':code==='busy'?'Insights are busy right now. Try again in a few minutes.':code==='setup'?'Smart insights need one setup step on your reminder service (an API key). Nothing else needs to change.':
@@ -2431,25 +2442,25 @@ async function aiAsk(question,signal,onText){
   return {text:j.text,left:typeof j.left==='number'?j.left:null};
 }
 async function aiRun(question){
-  var out=document.getElementById('aiOut'),meta=document.getElementById('aiMeta'),go=document.getElementById('aiGo'),ask=document.getElementById('aiAsk'),stop=document.getElementById('aiStop');
-  aiCtl=new AbortController();go.disabled=ask.disabled=true;stop.hidden=false;var prev=out.textContent;out.textContent='Thinking… this can take up to a minute.';meta.textContent='';
-  try{var r=await aiAsk(question,aiCtl.signal,function(t){out.textContent=t;});
-    out.textContent=r.text;meta.textContent=(question?'Answered ':'Insights from ')+new Date().toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'+(r.left!=null?' '+r.left+(r.left===1?' insight':' insights')+' left today.':'');
-    try{localStorage.setItem('de-ai-last',JSON.stringify({text:r.text,meta:meta.textContent}));}catch(e){}
+  var out=document.getElementById(question?'aiAns':'aiOut'),meta=document.getElementById('aiMeta'),go=document.getElementById('aiGo'),ask=document.getElementById('aiAsk'),stop=document.getElementById('aiStop');
+  aiCtl=new AbortController();go.disabled=ask.disabled=true;stop.hidden=false;if(question)out.hidden=false;var prev=out.textContent;out.textContent='Thinking… this can take up to a minute.';meta.textContent='';
+  try{var r=await aiAsk(question,aiCtl.signal,function(t){if(question)out.textContent=t;else out.textContent='Writing your insights\u2026';});
+    if(question)out.textContent=r.text;else{aiShow(r.text);document.getElementById('aiAns').hidden=true;}meta.textContent=(question?'Answered ':'Insights from ')+new Date().toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'+(r.left!=null?' '+r.left+(r.left===1?' insight':' insights')+' left today.':'');
+    if(!question){try{localStorage.setItem('de-ai-last',JSON.stringify({text:r.text,meta:meta.textContent}));}catch(e){}}
     document.getElementById('aiAskW').hidden=false;return r.text;}
   catch(e){out.textContent=e&&e.text?e.text:(e&&e.code==='cancelled'?'':prev);meta.textContent=aiErr(e&&e.code)+(e&&e.detail&&e.code!=='rate_limited'&&e.code!=='cancelled'?' Details: '+String(e.detail).slice(0,240):'');return null;}
   finally{go.disabled=ask.disabled=false;stop.hidden=true;}
 }
 (function(){
   var sec=document.getElementById('aiSec');if(!sec)return;
-  try{var last=JSON.parse(localStorage.getItem('de-ai-last')||'null');if(last&&typeof last.text==='string'){document.getElementById('aiOut').textContent=last.text;document.getElementById('aiMeta').textContent=String(last.meta||'');}}catch(e){}
+  try{var last=JSON.parse(localStorage.getItem('de-ai-last')||'null');if(last&&typeof last.text==='string'){aiShow(last.text);document.getElementById('aiMeta').textContent=String(last.meta||'');}}catch(e){}
   document.getElementById('aiStop').addEventListener('click',function(){if(aiCtl)aiCtl.abort();});
   document.getElementById('aiGo').addEventListener('click',async function(){
-    aiHist=[];aiData0=aiData();var txt=await aiRun('');if(txt)aiHist=[{q:'',a:txt}];
+    aiHist=[];aiData0=aiData();var txt=await aiRun('');if(txt)aiHist=[{q:'',a:aiPlain(txt)}];
   });
   document.getElementById('aiAsk').addEventListener('click',async function(){
     var q=document.getElementById('aiQ'),v=q.value.trim().slice(0,400);if(!v)return;
-    if(!aiHist.length){aiData0=aiData();aiHist=[{q:'',a:document.getElementById('aiOut').textContent.slice(0,6000)||'(no earlier insights)'}];}
+    if(!aiHist.length){aiData0=aiData();var lt='';try{lt=(JSON.parse(localStorage.getItem('de-ai-last')||'null')||{}).text||'';}catch(e){}aiHist=[{q:'',a:aiPlain(lt).slice(0,6000)||'(no earlier insights)'}];}
     var txt=await aiRun(v);if(txt){aiHist.push({q:v,a:txt});if(aiHist.length>4)aiHist=[aiHist[0]].concat(aiHist.slice(-3));q.value='';}
   });
 })();

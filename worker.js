@@ -234,13 +234,14 @@ async function handleGroup(path, body, env) {
 const AI_MAX_BODY = 140 * 1024;
 const AI_PER_DAY = 6;
 const AI_ALL_PER_DAY = 150;
-const AI_SYSTEM = "You are the coach inside Daily Edge, a habit and trading journal app for futures prop firm traders working toward payouts while building healthy habits. The first message holds the trader's logged data. " +
-  "When asked for insights, write 4 to 6 insights they can act on. Each one should point to a specific pattern in the data with the numbers that show it (dates, dollar amounts, counts), say why it matters, and give one concrete action. Cover trading first (rule breaks, setups, times of day, sizing against drawdown room, account progress toward targets and payouts, locking after trading), then health and habits, and any link between the two (for example sleep, mood or skipped checks on losing days). End with one line that starts with \"Tomorrow:\" naming the single most important thing to do. " +
-  "For follow-up questions, answer briefly from the data. " +
-  "Be direct and honest, like a good trading coach; do not sugarcoat losses or broken rules, and do not invent data that is not there. If there is too little data for something, say what to log to find out. Do not give buy or sell calls on markets. Only discuss the trader's data, trading, habits and health; politely decline anything unrelated. " +
-  "Format: plain text only, no markdown symbols, no asterisks, no bullet characters, no dashes as punctuation. Number each insight like \"1.\" and start it with a short title on its own line.";
+const AI_SYSTEM = "You are the coach inside Daily Edge, a habit and trading journal app for futures prop firm traders working toward payouts while building healthy habits. The first message holds the trader's logged data. P&L on copied trades is listed per account. " +
+  "When asked for insights, pick the 3 patterns that matter most for this trader right now, trading first (rule breaks, overtrading, setups, times of day, sizing against drawdown room, progress toward targets and payouts, locking after trading), then health and habits or a link between the two. Be direct and honest like a good trading coach; do not sugarcoat, do not invent data, and do not give buy or sell calls. If key data is missing, one insight may say what to log. " +
+  "Reply with ONLY a JSON object, no other text: {\"tomorrow\": string, \"insights\": [{\"title\": string, \"why\": string, \"action\": string}]}. Exactly 3 insights, the 3 that matter most, most important first. title: at most 6 words. why: one or two short sentences with the specific numbers from the data that show the pattern. action: one short sentence starting with a verb. tomorrow: one short sentence, the single most important thing to do next session. Keep the whole reply under 170 words. Plain words only: no markdown, no asterisks, no dashes as punctuation." +
+  " For follow-up questions, ignore the JSON format and answer in plain text in at most 3 short sentences, using the data. Only discuss the trader's data, trading, habits and health.";
 function aiStr(v, n) { return typeof v === "string" ? v.slice(0, n) : ""; }
+async function aiLog(env, o) { try { await env.SUBS.put("ai:last", JSON.stringify({ at: new Date().toISOString(), ...o })); } catch (e) {} }
 async function handleInsights(request, env) {
+  const t0 = Date.now();
   if (!env.ANTHROPIC_API_KEY) return json({ code: "setup", error: "Insights are not set up yet." }, 503);
   const len = Number(request.headers.get("Content-Length") || 0);
   if (len > AI_MAX_BODY) return json({ code: "error", error: "Request too large" }, 413);
@@ -266,17 +267,19 @@ async function handleInsights(request, env) {
     r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: env.AI_MODEL || "claude-sonnet-5-5", max_tokens: 1800, system: AI_SYSTEM, messages }),
+      body: JSON.stringify({ model: env.AI_MODEL || "claude-sonnet-5-5", max_tokens: 12000, thinking: { type: "adaptive" }, output_config: { effort: env.AI_EFFORT || "medium" }, system: AI_SYSTEM, messages }),
     });
     j = await r.json();
-  } catch (e) { return json({ code: "error", error: "Could not reach the insights model: " + String(e && e.message || e).slice(0, 120) }, 502); }
+  } catch (e) { const d = "Could not reach the insights model: " + String(e && e.message || e).slice(0, 120); await aiLog(env, { ok: false, step: "fetch", detail: d, ms: Date.now() - t0 }); return json({ code: "error", error: d }, 502); }
   if (!r.ok) {
     const t = j && j.error && j.error.type, m = String((j && j.error && j.error.message) || "").slice(0, 200);
     const code = /credit balance/i.test(m) ? "credits" : t === "authentication_error" || t === "permission_error" ? "setup" : t === "rate_limit_error" || t === "overloaded_error" ? "busy" : /model/i.test(m) && t === "not_found_error" ? "model" : "error";
+    await aiLog(env, { ok: false, step: "model", status: r.status, type: t || "", detail: m, ms: Date.now() - t0 });
     return json({ code, error: "Model error " + r.status + (t ? " (" + t + ")" : "") + (m ? ": " + m : "") }, 502);
   }
   const text = (Array.isArray(j.content) ? j.content : []).filter((c) => c && c.type === "text").map((c) => c.text).join("\n").trim();
-  if (!text) return json({ code: "error", error: "Empty answer" }, 502);
+  await aiLog(env, { ok: !!text, step: "done", stop: j.stop_reason || "", blocks: (Array.isArray(j.content) ? j.content : []).map((c) => c && c.type).join(","), textLen: text.length, usage: j.usage || null, model: j.model || "", ms: Date.now() - t0 });
+  if (!text) return json({ code: "error", error: "Empty answer (stop reason: " + String(j.stop_reason || "unknown") + ")" }, 502);
   return json({ text, left: Math.max(0, AI_PER_DAY - used - 1) });
 }
 
@@ -286,7 +289,9 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     if (!env.SUBS) return json({ error: "The SUBS storage is not connected yet. Add the KV binding named SUBS." }, 500);
 
-    if (url.pathname === "/" || url.pathname === "/health") return json({ ok: true, service: "tracker reminders", groups: true, insights: !!env.ANTHROPIC_API_KEY });
+    if (url.pathname === "/" || url.pathname === "/health") return json({ ok: true, service: "tracker reminders", groups: true, insights: !!env.ANTHROPIC_API_KEY, v: "ai-4" });
+
+    if (url.pathname === "/insights/last" && request.method === "GET") return json((await env.SUBS.get("ai:last", "json")) || { none: true });
 
     if (url.pathname === "/vapid" && request.method === "GET") {
       const v = await getVapid(env);
