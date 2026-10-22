@@ -464,6 +464,17 @@ h2.sech .sum{margin-left:auto;font-weight:500;font-size:.85rem;color:var(--muted
   <h2 style="margin-top:4px">Insights</h2>
   <p class="msg" style="margin-top:0">Updates from everything you log. New insights appear as you build more history.</p>
   <div id="insList" aria-live="polite"></div>
+  <section class="water" id="aiSec" aria-label="Smart insights" style="margin-top:12px">
+    <b>Smart insights</b>
+    <p class="msg" style="margin:4px 0 0">Reads your last 30 days of trades, accounts, check-ins, water, exercise and weight, then tells you what it sees and what to do about it.</p>
+    <div class="rwbtns"><button id="aiGo" type="button">Get my insights</button><button id="aiStop" type="button" hidden>Stop</button></div>
+    <div id="aiOut" aria-live="polite" style="white-space:pre-wrap;line-height:1.5;margin-top:10px"></div>
+    <p class="msg" id="aiMeta"></p>
+    <div id="aiAskW" hidden>
+      <div class="fld" style="margin:10px 0 0"><span>Ask a follow-up</span><textarea id="aiQ" maxlength="400" style="min-height:60px" placeholder="Like: why do my Mondays go badly?"></textarea></div>
+      <div class="rwbtns"><button id="aiAsk" type="button">Ask</button></div>
+    </div>
+  </section>
 
   <h2>Charts</h2>
   <div id="chRange" style="margin-bottom:12px"></div>
@@ -2370,6 +2381,78 @@ function presetLoader(a,i){
   firm.addEventListener('change',fp);fp();w.appendChild(btn);
   return w;
 }
+
+/* ---------- smart insights ---------- */
+function aiData(){
+  var t=today(),L=[],start=addDays(t,-29);
+  L.push('Today: '+t+'. Trading days run on the 5 PM Central session.');
+  var ws=wtStart(),wi=weighIns();
+  if(ws)L.push('Weight: started at '+ws+' lb'+(wi.length?', latest '+wi[wi.length-1][1]+' lb on '+wi[wi.length-1][0]:'')+'.');
+  L.push('Yearly goals: '+GOALS_W.concat(GOALS_T).map(function(x){return x[1]+(state.goals[x[0]]?' (done)':' (not yet)');}).join('; '));
+  L.push('Daily water goal: '+waterGoal()+' glasses. Checklist has '+DAILY.length+' daily boxes. Risk rule: ATM risk should stay under '+(state.goals.riskPct||20)+'% of drawdown room.');
+  var ac=accounts();if(ac.length){L.push('ACCOUNTS');ac.forEach(function(a){var st=stageOf(a),s=acctStats(a),d=a.ddAmt?ddState(a):null;
+    L.push(a.name+' | '+STAGE_LABEL[st]+(a.target?' | target $'+a.target:'')+(a.minDays?' | min days '+a.minDays:'')+(a.consistency?' | consistency '+a.consistency+'%':'')+(a.dailyLimit?' | daily loss limit $'+a.dailyLimit:'')+' | profit since start of count $'+Math.round(s.profit)+' over '+s.days+' days, best day $'+Math.round(s.best)+(d?' | balance $'+Math.round(d.bal)+', drawdown floor $'+Math.round(d.floor)+', room $'+Math.round(d.room)+' ('+(a.ddType||'eod')+')':'')+(a.payouts?' | payouts '+a.payouts:''));});}
+  var notes=state.goals.weekNotes||{};Object.keys(notes).sort().slice(-4).forEach(function(k){if(typeof notes[k]==='string')L.push('Week of '+k+' planned change: '+notes[k].slice(0,200));});
+  L.push('DAYS (oldest first)');
+  for(var k=start;k<=t;k=addDays(k,1)){var d=state.days[k]||{},j=state.journal[k],bits=[];
+    var dw=parse(k).toLocaleDateString('en-US',{weekday:'short'});
+    var c=countFor(k);if(c)bits.push('boxes '+c+'/'+DAILY.length);if(d.water)bits.push('water '+d.water);var m=exMin(k);if(m)bits.push('exercise '+m+' min');if(d.weight)bits.push('weight '+d.weight);
+    if(j){if(j.noTrade)bits.push('no trade day'+(j.ntReason?' ('+j.ntReason+')':''));
+      if(j.pre){var no=PRE.filter(function(p){return j.pre[p[0]]==='no';}).map(function(p){return p[1];});var yes=PRE.filter(function(p){return j.pre[p[0]]==='yes';}).length;if(yes||no.length)bits.push('pre-trade check '+yes+' yes'+(no.length?', no on: '+no.join(', '):''));}
+      if(j.mb)bits.push('mood before '+j.mb);if(j.ma)bits.push('mood after '+j.ma);
+      j.trades.forEach(function(x,n){var p=tradePnl(x);bits.push('trade '+(n+1)+': '+tradeAccts(x).join('+')+(x.dir?' '+x.dir:'')+(x.inst?' '+x.inst:'')+(x.time?' at '+x.time:'')+(x.atm?' ATM '+x.atm:'')+(x.setup?' setup "'+x.setup.slice(0,60)+'"':'')+' P&L $'+Math.round(p)+(x.plan?' plan '+(x.plan==='yes'?'followed':'broken'):'')+(x.after?' note "'+x.after.slice(0,80)+'"':''));});
+      if(j.lock&&j.lock.at)bits.push('locked accounts');if(j.afterLock)bits.push('traded after locking '+j.afterLock+'x');
+      if(j.well)bits.push('did well "'+j.well.slice(0,120)+'"');if(j.mis)bits.push('mistake "'+j.mis.slice(0,120)+'"');if(j.tom)bits.push('tomorrow "'+j.tom.slice(0,120)+'"');}
+    if(bits.length)L.push(k+' '+dw+': '+bits.join('; '));}
+  return L.join('\n').slice(0,90000);
+}
+/* Same coaching rules the service uses; only needed when running inside the Claude app. */
+var AI_RULES='You are the coach inside Daily Edge, a habit and trading journal app for futures prop firm traders working toward payouts while building healthy habits. Below is the trader’s logged data. '+
+ 'Write 4 to 6 insights they can act on. Each one should point to a specific pattern in the data with the numbers that show it (dates, dollar amounts, counts), say why it matters, and give one concrete action. Cover trading first (rule breaks, setups, times of day, sizing against drawdown room, account progress toward targets and payouts, locking after trading), then health and habits, and any link between the two (for example sleep, mood or skipped checks on losing days). '+
+ 'Be direct and honest, like a good trading coach; do not sugarcoat losses or broken rules, and do not invent data that is not there. If there is too little data for something, say what to log to find out. Do not give buy or sell calls on markets. '+
+ 'Format: plain text only, no markdown symbols, no asterisks, no bullet characters, no dashes as punctuation. Number each insight like "1." and start it with a short title on its own line. End with one line that starts with "Tomorrow:" naming the single most important thing to do.';
+var aiHist=[],aiData0='',aiCtl=null;
+function aiInClaude(){return !!(window.claude&&typeof claude.use==='function');}
+function aiErr(code){return code==='not_granted'||code==='sampling_disabled'||code==='not_declared'||code==='capability_disabled'?'Insights aren’t allowed for this page. You can turn them on from the page’s Permissions menu.':
+  code==='rate_limited'?'You’ve used today’s insights. Try again tomorrow.':code==='busy'?'Insights are busy right now. Try again in a few minutes.':code==='setup'?'Smart insights need one setup step on your reminder service (an API key). Nothing else needs to change.':
+  code==='offline'?'You’re offline. Connect and try again.':code==='cancelled'?'Stopped.':'Something went wrong getting your insights. Try again.';}
+/* Ask the service (phone app) or the Claude app. Resolves {text,left} or rejects {code}. */
+async function aiAsk(question,signal,onText){
+  if(aiInClaude()){var sample=null;try{sample=await claude.use('sample');}catch(e){}if(!sample)throw {code:'setup'};
+    var turns=[{role:'user',content:AI_RULES+'\n\nDATA\n'+aiData0}];aiHist.forEach(function(h,i){if(i)turns.push({role:'user',content:h.q});turns.push({role:'assistant',content:h.a});});
+    if(question)turns.push({role:'user',content:question+'\n\nAnswer in plain text, no markdown, using the data above.'});
+    try{var r=await sample(turns,{signal:signal,cache:false,onText:function(u){onText(u.text);}});return {text:r.text};}catch(e){throw {code:e&&e.code,text:e&&e.text};}}
+  if(!navigator.onLine)throw {code:'offline'};
+  var res;try{res=await fetch(nUrl()+'/insights',{method:'POST',signal:signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({device:nDevice(),data:aiData0,history:aiHist.slice(0,4),question:question||''})});}
+  catch(e){throw {code:e&&e.name==='AbortError'?'cancelled':'offline'};}
+  var j={};try{j=await res.json();}catch(e){}
+  if(!res.ok)throw {code:j.code||'error'};
+  if(typeof j.text!=='string'||!j.text.trim())throw {code:'error'};
+  return {text:j.text,left:typeof j.left==='number'?j.left:null};
+}
+async function aiRun(question){
+  var out=document.getElementById('aiOut'),meta=document.getElementById('aiMeta'),go=document.getElementById('aiGo'),ask=document.getElementById('aiAsk'),stop=document.getElementById('aiStop');
+  aiCtl=new AbortController();go.disabled=ask.disabled=true;stop.hidden=false;var prev=out.textContent;out.textContent='Thinking… this can take up to a minute.';meta.textContent='';
+  try{var r=await aiAsk(question,aiCtl.signal,function(t){out.textContent=t;});
+    out.textContent=r.text;meta.textContent=(question?'Answered ':'Insights from ')+new Date().toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'+(r.left!=null?' '+r.left+(r.left===1?' insight':' insights')+' left today.':'');
+    try{localStorage.setItem('de-ai-last',JSON.stringify({text:r.text,meta:meta.textContent}));}catch(e){}
+    document.getElementById('aiAskW').hidden=false;return r.text;}
+  catch(e){out.textContent=e&&e.text?e.text:(e&&e.code==='cancelled'?'':prev);meta.textContent=aiErr(e&&e.code);return null;}
+  finally{go.disabled=ask.disabled=false;stop.hidden=true;}
+}
+(function(){
+  var sec=document.getElementById('aiSec');if(!sec)return;
+  try{var last=JSON.parse(localStorage.getItem('de-ai-last')||'null');if(last&&typeof last.text==='string'){document.getElementById('aiOut').textContent=last.text;document.getElementById('aiMeta').textContent=String(last.meta||'');}}catch(e){}
+  document.getElementById('aiStop').addEventListener('click',function(){if(aiCtl)aiCtl.abort();});
+  document.getElementById('aiGo').addEventListener('click',async function(){
+    aiHist=[];aiData0=aiData();var txt=await aiRun('');if(txt)aiHist=[{q:'',a:txt}];
+  });
+  document.getElementById('aiAsk').addEventListener('click',async function(){
+    var q=document.getElementById('aiQ'),v=q.value.trim().slice(0,400);if(!v)return;
+    if(!aiHist.length){aiData0=aiData();aiHist=[{q:'',a:document.getElementById('aiOut').textContent.slice(0,6000)||'(no earlier insights)'}];}
+    var txt=await aiRun(v);if(txt){aiHist.push({q:v,a:txt});if(aiHist.length>4)aiHist=[aiHist[0]].concat(aiHist.slice(-3));q.value='';}
+  });
+})();
 
 var bkPending=null;
 function bkMsg(t){document.getElementById('bkMsg').textContent=t;}

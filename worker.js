@@ -226,13 +226,66 @@ async function handleGroup(path, body, env) {
   return json({ error: "Not found" }, 404);
 }
 
+
+// ---------- Smart insights ----------
+// Needs a secret named ANTHROPIC_API_KEY (Settings > Variables and Secrets > Add > Secret).
+// Optional variable AI_MODEL to change the model. Each device gets AI_PER_DAY runs a day, and the whole
+// service AI_ALL_PER_DAY, so a leaked app link can't run up the bill.
+const AI_MAX_BODY = 140 * 1024;
+const AI_PER_DAY = 6;
+const AI_ALL_PER_DAY = 150;
+const AI_SYSTEM = "You are the coach inside Daily Edge, a habit and trading journal app for futures prop firm traders working toward payouts while building healthy habits. The first message holds the trader's logged data. " +
+  "When asked for insights, write 4 to 6 insights they can act on. Each one should point to a specific pattern in the data with the numbers that show it (dates, dollar amounts, counts), say why it matters, and give one concrete action. Cover trading first (rule breaks, setups, times of day, sizing against drawdown room, account progress toward targets and payouts, locking after trading), then health and habits, and any link between the two (for example sleep, mood or skipped checks on losing days). End with one line that starts with \"Tomorrow:\" naming the single most important thing to do. " +
+  "For follow-up questions, answer briefly from the data. " +
+  "Be direct and honest, like a good trading coach; do not sugarcoat losses or broken rules, and do not invent data that is not there. If there is too little data for something, say what to log to find out. Do not give buy or sell calls on markets. Only discuss the trader's data, trading, habits and health; politely decline anything unrelated. " +
+  "Format: plain text only, no markdown symbols, no asterisks, no bullet characters, no dashes as punctuation. Number each insight like \"1.\" and start it with a short title on its own line.";
+function aiStr(v, n) { return typeof v === "string" ? v.slice(0, n) : ""; }
+async function handleInsights(request, env) {
+  if (!env.ANTHROPIC_API_KEY) return json({ code: "setup", error: "Insights are not set up yet." }, 503);
+  const len = Number(request.headers.get("Content-Length") || 0);
+  if (len > AI_MAX_BODY) return json({ code: "error", error: "Request too large" }, 413);
+  let body;
+  try { const text = await request.text(); if (text.length > AI_MAX_BODY) return json({ code: "error", error: "Request too large" }, 413); body = JSON.parse(text); } catch (e) { return json({ code: "error", error: "Bad request" }, 400); }
+  if (!body || typeof body !== "object" || !validId(body.device)) return json({ code: "error", error: "Bad request" }, 400);
+  const data = aiStr(body.data, 100000), question = aiStr(body.question, 400).trim();
+  if (!data.trim()) return json({ code: "error", error: "No data" }, 400);
+  const hist = (Array.isArray(body.history) ? body.history : []).slice(0, 4).filter((h) => h && typeof h === "object" && typeof h.a === "string" && h.a.trim());
+  const messages = [{ role: "user", content: "DATA\n" + data + "\n\nGive me my insights." }];
+  hist.forEach((h, i) => { if (i) { const q = aiStr(h.q, 400).trim(); if (!q) return; messages.push({ role: "user", content: q }); } messages.push({ role: "assistant", content: aiStr(h.a, 6000) }); });
+  if (question) { if (messages[messages.length - 1].role === "user") return json({ code: "error", error: "Bad request" }, 400); messages.push({ role: "user", content: question }); }
+  else if (messages.length > 1) return json({ code: "error", error: "Bad request" }, 400);
+  const day = new Date().toISOString().slice(0, 10);
+  const dk = "ai:" + body.device + ":" + day, ak = "ai:all:" + day;
+  const used = Number(await env.SUBS.get(dk)) || 0, all = Number(await env.SUBS.get(ak)) || 0;
+  if (used >= AI_PER_DAY) return json({ code: "rate_limited", error: "Daily limit reached" }, 429);
+  if (all >= AI_ALL_PER_DAY) return json({ code: "busy", error: "Service limit reached" }, 429);
+  await env.SUBS.put(dk, String(used + 1), { expirationTtl: 172800 });
+  await env.SUBS.put(ak, String(all + 1), { expirationTtl: 172800 });
+  let r, j = {};
+  try {
+    r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: env.AI_MODEL || "claude-sonnet-5-5", max_tokens: 1800, system: AI_SYSTEM, messages }),
+    });
+    j = await r.json();
+  } catch (e) { return json({ code: "error", error: "Could not reach the insights model" }, 502); }
+  if (!r.ok) {
+    const t = j && j.error && j.error.type;
+    return json({ code: t === "authentication_error" || t === "permission_error" ? "setup" : t === "rate_limit_error" || t === "overloaded_error" ? "busy" : "error", error: "The insights model returned an error" }, 502);
+  }
+  const text = (Array.isArray(j.content) ? j.content : []).filter((c) => c && c.type === "text").map((c) => c.text).join("\n").trim();
+  if (!text) return json({ code: "error", error: "Empty answer" }, 502);
+  return json({ text, left: Math.max(0, AI_PER_DAY - used - 1) });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     if (!env.SUBS) return json({ error: "The SUBS storage is not connected yet. Add the KV binding named SUBS." }, 500);
 
-    if (url.pathname === "/" || url.pathname === "/health") return json({ ok: true, service: "tracker reminders", groups: true });
+    if (url.pathname === "/" || url.pathname === "/health") return json({ ok: true, service: "tracker reminders", groups: true, insights: !!env.ANTHROPIC_API_KEY });
 
     if (url.pathname === "/vapid" && request.method === "GET") {
       const v = await getVapid(env);
@@ -248,6 +301,7 @@ export default {
     }
 
     if (request.method !== "POST") return json({ error: "Not found" }, 404);
+    if (url.pathname === "/insights") return handleInsights(request, env);
     const len = Number(request.headers.get("Content-Length") || 0);
     if (len > MAX_BODY) return json({ error: "Request too large" }, 413);
     let body;
