@@ -1330,10 +1330,14 @@ function renderPayout(){
       act.addEventListener('click',function(){
         if(!act.dataset.arm){act.dataset.arm='1';act.textContent=isEval?'Tap again to confirm you passed':'Tap again to confirm the payout';return;}
         var t=today();
-        if(isEval){a.stage='funded';a.passedOn=t;a.since=addDays(t,1);delete a.target;ppEditing={};ppEditing[i]=true;ppMsg='Congrats on passing. Enter the funded account’s payout rules below. Progress starts fresh tomorrow.';}
+        if(isEval){var pr=a.preset,fv=pr?presetVariants(pr.firm,pr.plan,'funded'):[],pick=act.__fv?act.__fv.value:(fv[0]&&fv[0][0]);a.stage='funded';a.passedOn=t;a.since=addDays(t,1);a.opened=addDays(t,1);delete a.balAdj;delete a.withdrawn;delete a.floorOverride;delete a.target;
+          var applied=pr&&fv.length&&applyPreset(a,pr.firm,pr.plan,'funded',pick,pr.size);ppEditing={};ppEditing[i]=true;
+          ppMsg=applied?'Congrats on passing. '+(pick||'Funded')+' rules are filled in. Check them against your dashboard. Your funded balance starts fresh tomorrow.':'Congrats on passing. Enter the funded account’s payout rules below. Progress starts fresh tomorrow.';}
         else{var amt=act.__pa?num(act.__pa.value):NaN;a.payouts=(a.payouts||0)+1;a.lastPayout=t;a.since=addDays(t,1);if(amt>0){a.withdrawn=r2((num(a.withdrawn)||0)+amt);a.paidTotal=r2((num(a.paidTotal)||0)+amt);}ppMsg='Payout logged'+(amt>0?' and $'+amt.toLocaleString()+' taken out of the balance':'')+'. Progress starts fresh tomorrow.';}
         save();renderPayout();renderJournal();
       });
+      if(isEval&&a.preset){var fvs=presetVariants(a.preset.firm,a.preset.plan,'funded');if(fvs.length>1){var fs=document.createElement('select');fs.setAttribute('aria-label','Funded type');fs.style.cssText='width:100%;min-height:44px;margin:8px 0 0;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit';
+        fvs.forEach(function(v){var o=document.createElement('option');o.value=v[0];o.textContent='Funded as '+v[0];fs.appendChild(o);});c.appendChild(fs);act.__fv=fs;}}
       if(!isEval){var pa=document.createElement('input');pa.setAttribute('inputmode','decimal');pa.placeholder='Payout amount ($), optional';pa.setAttribute('aria-label','Payout amount');pa.style.cssText='width:100%;margin:8px 0 0;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit';c.appendChild(pa);act.__pa=pa;}
       c.appendChild(act);
     }
@@ -1365,6 +1369,7 @@ function renderPayout(){
     g3.appendChild(f('Floor override ($)',a.floorOverride,'Optional','decimal','text',function(v){var n=num(v);if(n>0)a.floorOverride=r2(n);else delete a.floorOverride;}));
     ed.appendChild(g3);
     var ddh=document.createElement('p');ddh.className='msg';ddh.textContent='Leave Floor stops trailing at blank to stop at your starting balance, or enter 0 if it never stops. Use Set balance to match your platform after fees or missed trades. Intraday is estimated from closed trades, since open profit isn\u2019t logged.';ed.appendChild(ddh);
+    if(a.preset||a.rulesNote){var rn=document.createElement('p');rn.className='msg';rn.textContent=(a.preset?'Rules from '+a.preset.firm+' '+a.preset.plan+(a.preset.variant?' ('+a.preset.variant+')':'')+', '+a.preset.size+'K, as of '+a.preset.asOf+'. ':'')+(a.rulesNote||'')+' Check your dashboard, since firms change rules.';ed.insertBefore(rn,ed.firstChild);}
     var hint=document.createElement('p');hint.className='msg';hint.textContent=isEval?'When you pass, use the button on this card to move it to funded.':'When a payout lands, use the button on this card and progress starts fresh the next day.';ed.appendChild(hint);
     var dl=document.createElement('button');dl.type='button';dl.className='del';dl.style.marginTop='6px';dl.textContent='Remove account';
     dl.addEventListener('click',function(){if(!dl.dataset.arm){dl.dataset.arm='1';dl.textContent='Tap again to remove. Trades stay in your journal.';return;}accts.splice(i,1);ppEditing={};save();renderPayout();renderJournal();});ed.appendChild(dl);
@@ -1675,7 +1680,7 @@ document.getElementById('profUser').addEventListener('keydown',function(e){if(e.
 /* ---------- account picker ---------- */
 var FIRMS=['Tradeify','Midgard','Lucid','TPT','MFFU','Apex','FFF','Halcyon','Other'];
 var FIRM_FULL={TPT:'Take Profit Trader',MFFU:'MyFundedFutures',FFF:'Funded Futures Family'};
-var SIZES=['25K','50K','100K','150K','250K',''];
+var SIZES=['25K','50K','75K','100K','150K','250K','300K',''];
 function acctNames(){
   var seen={},out=[],accts=accounts();
   ['funded','eval'].forEach(function(st){accts.forEach(function(a){if(stageOf(a)!==st)return;var n=(a.name||'').trim();if(n&&!seen[n.toLowerCase()]){seen[n.toLowerCase()]=1;out.push(n);}});});
@@ -1706,26 +1711,55 @@ function renderNewAcct(){
   var box=document.getElementById('ppNew');if(!box)return;box.innerHTML='';box.className='pnew';
   var h=document.createElement('b');h.textContent='Add an account';box.appendChild(h);
   function lab(t,el){var d=document.createElement('div');d.className='fld';d.style.margin='8px 0 0';var s=document.createElement('span');s.textContent=t;d.appendChild(s);d.appendChild(el);return d;}
-  var firm=document.createElement('select');FIRMS.forEach(function(f){var o=document.createElement('option');o.value=f;o.textContent=FIRM_FULL[f]?f+' ('+FIRM_FULL[f]+')':f;firm.appendChild(o);});
-  var custom=document.createElement('input');custom.placeholder='Firm name';
-  var size=document.createElement('select');SIZES.forEach(function(z){var o=document.createElement('option');o.value=z;o.textContent=z||'No size';if(z==='50K')o.selected=true;size.appendChild(o);});
-  var tag=document.createElement('input');tag.placeholder='Optional, like #2';tag.maxLength=12;
-  var stage='eval';var stSeg=seg([['eval','Evaluation'],['funded','Funded']],stage,function(v){stage=v;upd();});
+  function sel(opts,cur){var s=document.createElement('select');opts.forEach(function(o){var op=document.createElement('option');op.value=o[0];op.textContent=o[1];if(o[0]===cur)op.selected=true;s.appendChild(op);});return s;}
+  var stage='eval';var stSeg=seg([['eval','Evaluation'],['funded','Funded']],stage,function(v){stage=v;fillPlans();});
   box.appendChild(lab('Stage',stSeg));
-  box.appendChild(lab('Prop firm',firm));var cw=lab('Firm name',custom);cw.style.display='none';box.appendChild(cw);
-  var g=document.createElement('div');g.className='g2';g.appendChild(lab('Account size',size));g.appendChild(lab('Label',tag));box.appendChild(g);
-  firm.addEventListener('change',function(){cw.style.display=firm.value==='Other'?'block':'none';});
+  var firm=sel(FIRMS.map(function(f){return [f,FIRM_FULL[f]?f+' ('+FIRM_FULL[f]+')':f];}),'Tradeify');box.appendChild(lab('Prop firm',firm));
+  var custom=document.createElement('input');custom.placeholder='Firm name';var cw=lab('Firm name',custom);cw.style.display='none';box.appendChild(cw);
+  var planW=document.createElement('div');box.appendChild(planW);
+  var varW=document.createElement('div');box.appendChild(varW);
+  var g=document.createElement('div');g.className='g2';var sizeW=document.createElement('div');g.appendChild(sizeW);
+  var tag=document.createElement('input');tag.placeholder='Optional, like #2';tag.maxLength=12;g.appendChild(lab('Label',tag));box.appendChild(g);
+  var info=document.createElement('p');info.className='msg';box.appendChild(info);
   var prev=document.createElement('p');prev.className='msg';box.appendChild(prev);
-  function name(){var f=firm.value==='Other'?custom.value.trim():firm.value;return [f,size.value,tag.value.trim()].filter(Boolean).join(' ');}
-  function upd(){prev.className='msg';prev.textContent=name()?'Will appear as: '+name()+' ('+STAGE_LABEL[stage]+')':'Enter a firm name.';}
-  [firm,custom,size,tag].forEach(function(e){e.addEventListener('input',upd);e.addEventListener('change',upd);});upd();
+  var planS=null,varS=null,sizeS=null;
+  function fillPlans(){
+    planW.innerHTML='';var f=firm.value,p=PRESETS[f];cw.style.display=f==='Other'?'block':'none';
+    var opts=[];if(p)Object.keys(p.plans).forEach(function(k){if(presetVariants(f,k,stage).length)opts.push([k,k]);});opts.push(['__custom','Custom rules']);
+    planS=sel(opts,opts[0][0]);planS.addEventListener('change',fillVariants);planW.appendChild(lab('Plan',planS));fillVariants();
+  }
+  function fillVariants(){
+    varW.innerHTML='';varS=null;var vs=planS.value==='__custom'?[]:presetVariants(firm.value,planS.value,stage);
+    if(stage==='funded'&&vs.length>1){varS=sel(vs.map(function(v){return [v[0],v[0]];}),vs[0][0]);varS.addEventListener('change',fillSizes);varW.appendChild(lab('Funded type',varS));}
+    fillSizes();
+  }
+  function curVariant(){var vs=planS.value==='__custom'?[]:presetVariants(firm.value,planS.value,stage);if(!vs.length)return null;var k=varS?varS.value:vs[0][0];var v=null;vs.forEach(function(x){if(x[0]===k)v=x;});return v;}
+  function fillSizes(){
+    sizeW.innerHTML='';var v=curVariant(),opts;
+    if(v)opts=v[1].rows.map(function(r){return [String(r[0]),r[0]+'K'];});else opts=[['25','25K'],['50','50K'],['75','75K'],['100','100K'],['150','150K'],['250','250K'],['300','300K'],['','No size']];
+    var cur=opts.some(function(o){return o[0]==='50';})?'50':opts[0][0];sizeS=sel(opts,cur);sizeS.addEventListener('change',upd);sizeW.appendChild(lab('Account size',sizeS));upd();
+  }
+  function name(){var f=firm.value==='Other'?custom.value.trim():firm.value;return [f,sizeS&&sizeS.value?sizeS.value+'K':'',tag.value.trim()].filter(Boolean).join(' ');}
+  function upd(){
+    var v=curVariant(),r=v&&sizeS?presetRow(v[1],Number(sizeS.value)):null;info.innerHTML='';
+    if(r){info.appendChild(document.createTextNode(describeRow(r)+' '));if(v[1].note){info.appendChild(document.createElement('br'));info.appendChild(document.createTextNode(v[1].note));}
+      info.appendChild(document.createElement('br'));var src=PRESETS[firm.value].src,third=PRESETS[firm.value].third;
+      var sm=document.createElement('small');sm.textContent=(third?'From recent published summaries of ':'From ')+(FIRM_FULL[firm.value]||firm.value)+(third?'’s rules':'’s site')+' as of '+PRESET_ASOF+'. Firms change rules often, so check your dashboard. ';
+      var a=document.createElement('a');a.href=src;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Source';a.style.color='inherit';sm.appendChild(a);info.appendChild(sm);}
+    else info.textContent=planS&&planS.value==='__custom'?'You’ll enter the rules yourself under Edit rules.':'';
+    prev.className='msg';prev.textContent=name()?'Will appear as: '+name()+' ('+STAGE_LABEL[stage]+')':'Enter a firm name.';
+  }
+  firm.addEventListener('change',fillPlans);[custom,tag].forEach(function(e){e.addEventListener('input',upd);});
+  fillPlans();
   var row=document.createElement('div');row.className='rwbtns';
   var add=document.createElement('button');add.type='button';add.textContent='Add account';
   var cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel';
   add.addEventListener('click',function(){var n=name();if(!n){prev.textContent='Enter a firm name.';return;}var a=accounts();
     if(a.some(function(x){return (x.name||'').toLowerCase()===n.toLowerCase();})){prev.className='msg bad';prev.textContent='You already have an account named '+n+'. Add a label like #2.';return;}
     if(a.length>=15){prev.textContent='You can track up to 15 accounts.';return;}
-    a.push({name:n,stage:stage});ppEditing={};ppEditing[a.length-1]=true;box.style.display='none';save();renderPayout();renderJournal();});
+    var acct={name:n,stage:stage,opened:today()};var v=curVariant();
+    if(v&&sizeS.value)applyPreset(acct,firm.value,planS.value,stage,v[0],Number(sizeS.value));
+    a.push(acct);ppEditing={};ppEditing[a.length-1]=true;box.style.display='none';save();renderPayout();renderJournal();});
   cancel.addEventListener('click',function(){box.style.display='none';});
   row.appendChild(add);row.appendChild(cancel);box.appendChild(row);
 }
@@ -2228,6 +2262,26 @@ function copyChips(t,onChange){
       b.setAttribute('aria-pressed',i>=0?'false':'true');save();onChange();});
     w.appendChild(b);});
   return w;
+}
+
+/* ---------- prop firm presets (researched Oct 22, 2026) ---------- */
+var PRESET_ASOF='Oct 22, 2026';
+var PRESETS={"Apex": {"src": "https://apextraderfunding.com/help-center/", "third": true, "plans": {"EOD": {"eval": {"note": "No consistency rule or minimum days in evaluation. Daily loss limit applies to EOD accounts.", "rows": [[25, 1500, 1000, "eod", "S100", 500, 0, 0, "4 contracts"], [50, 3000, 2000, "eod", "S100", 1000, 0, 0, "6 contracts"], [100, 6000, 3000, "eod", "S100", 1500, 0, 0, "8 contracts"], [150, 9000, 4000, "eod", "S100", 2000, 0, 0, "12 contracts"]]}, "funded": {"Performance Account": {"note": "Safety net is your drawdown plus $100. Each payout needs 5 qualifying days and 50% consistency since the last payout, $500 minimum, up to 6 payouts. The daily loss limit can change with your tier. Target is the profit needed to request a payout.", "rows": [[25, 1600, 1000, "eod", "S100", 500, 50, 5, ""], [50, 2600, 2000, "eod", "S100", 1000, 50, 5, ""], [100, 3600, 3000, "eod", "S100", 1500, 50, 5, ""], [150, 4600, 4000, "eod", "S100", 2000, 50, 5, ""]]}}}, "Intraday": {"eval": {"note": "Intraday trailing follows open profit peaks. No daily loss limit, consistency rule, or minimum days in evaluation.", "rows": [[25, 1500, 1000, "intraday", "S100", 0, 0, 0, "4 contracts"], [50, 3000, 2000, "intraday", "S100", 0, 0, 0, "6 contracts"], [100, 6000, 3000, "intraday", "S100", 0, 0, 0, "8 contracts"], [150, 9000, 4000, "intraday", "S100", 0, 0, 0, "12 contracts"]]}, "funded": {"Performance Account": {"note": "Safety net is your drawdown plus $100. Each payout needs 5 qualifying days and 50% consistency since the last payout, $500 minimum, up to 6 payouts. Target is the profit needed to request a payout.", "rows": [[25, 1600, 1000, "intraday", "S100", 0, 50, 5, ""], [50, 2600, 2000, "intraday", "S100", 0, 50, 5, ""], [100, 3600, 3000, "intraday", "S100", 0, 50, 5, ""], [150, 4600, 4000, "intraday", "S100", 0, 50, 5, ""]]}}}}}, "Tradeify": {"src": "https://help.tradeify.co/en/articles/12853921-select-evaluation-accounts", "plans": {"Select": {"eval": {"note": "No daily loss limit except on 300K. The 50% consistency add-on cuts minimum days to 2.", "rows": [[25, 1500, 1000, "eod", "S100", 0, 40, 3, "1 mini or 10 micros"], [50, 3000, 2000, "eod", "S100", 0, 40, 3, "4 minis or 40 micros"], [100, 6000, 3000, "eod", "S100", 0, 40, 3, "8 minis or 80 micros"], [150, 9000, 4500, "eod", "S100", 0, 40, 3, "12 minis or 120 micros"], [300, 14000, 8000, "eod", "S100", 4000, 40, 3, "16 minis or 160 micros when fully scaled"]]}, "funded": {"Select Flex": {"note": "Payout every 5 winning days, up to 50% of profit per payout. No daily loss limit (except 300K), no buffer, no consistency rule. 90/10 split.", "rows": [[25, 0, 1000, "eod", "S100", 0, 0, 5, "2 minis scaled"], [50, 0, 2000, "eod", "S100", 0, 0, 5, "4 minis scaled"], [100, 0, 3000, "eod", "S100", 0, 0, 5, "8 minis scaled"], [150, 0, 4500, "eod", "S100", 0, 0, 5, "12 minis scaled"], [300, 0, 8000, "eod", "S100", 4000, 0, 5, "16 minis scaled"]]}, "Select Daily": {"note": "Daily payouts once the buffer is met, up to 2x profit since your last payout, $250 minimum. 90/10 split. Target is the buffer.", "rows": [[25, 1100, 1000, "eod", "S100", 500, 0, 0, "2 minis scaled"], [50, 2100, 2000, "eod", "S100", 1000, 0, 0, "4 minis scaled"], [100, 2600, 2500, "eod", "S100", 1250, 0, 0, "8 minis scaled"], [150, 3600, 3500, "eod", "S100", 1750, 0, 0, "12 minis scaled"], [300, 6100, 6000, "eod", "S100", 3000, 0, 0, "16 minis scaled"]]}}}, "Growth": {"eval": {"note": "The daily loss limit pauses trading for the day without failing the account. Tradeify doesn’t publish where Growth drawdown locks. Funded Growth rules aren’t on the help page, so enter them from your dashboard.", "rows": [[25, 1500, 1000, "eod", "S", 600, 0, 1, "1 mini or 10 micros"], [50, 3000, 2000, "eod", "S", 1250, 0, 1, "4 minis or 40 micros"], [100, 6000, 3500, "eod", "S", 2500, 0, 1, "8 minis or 80 micros"], [150, 9000, 5000, "eod", "S", 3750, 0, 1, "12 minis or 120 micros"]]}}}}, "Lucid": {"src": "https://support.lucidtrading.com/en/", "plans": {"LucidPro": {"eval": {"note": "No daily loss limit on 25K.", "rows": [[25, 1250, 1000, "eod", "S100", 0, 0, 0, "2 minis or 20 micros"], [50, 3000, 2000, "eod", "S100", 1200, 0, 0, "4 minis or 40 micros"], [100, 6000, 3000, "eod", "S100", 1800, 0, 0, "6 minis or 60 micros"], [150, 9000, 4500, "eod", "S100", 2700, 0, 0, "10 minis or 100 micros"]]}, "funded": {"LucidPro Funded": {"note": "The daily loss limit is optional and chosen when you buy, so clear it if you turned it off. No payout caps and full size right away.", "rows": [[25, 0, 1000, "eod", "S100", 600, 0, 0, "2 minis or 20 micros"], [50, 0, 2000, "eod", "S100", 1200, 0, 0, "4 minis or 40 micros"], [100, 0, 3000, "eod", "S100", 1800, 0, 0, "6 minis or 60 micros"], [150, 0, 4500, "eod", "S100", 2700, 0, 0, "10 minis or 100 micros"]]}}}, "LucidFlex": {"eval": {"note": "The daily loss limit is optional at checkout. The 50% consistency add-on cuts minimum days to 2.", "rows": [[25, 1250, 1000, "eod", "S100", 0, 40, 3, "2 minis or 20 micros"], [50, 3000, 2000, "eod", "S100", 0, 40, 3, "4 minis or 40 micros"], [100, 6000, 3000, "eod", "S100", 0, 40, 3, "6 minis or 60 micros"], [150, 9000, 4500, "eod", "S100", 0, 40, 3, "10 minis or 100 micros"]]}, "funded": {"LucidFlex Funded": {"note": "No consistency rule and no payout buffer when funded. Scaling plan applies. 90/10 split.", "rows": [[25, 0, 1000, "eod", "S100", 0, 0, 0, "2 minis or 20 micros"], [50, 0, 2000, "eod", "S100", 0, 0, 0, "4 minis or 40 micros"], [100, 0, 3000, "eod", "S100", 0, 0, 0, "6 minis or 60 micros"], [150, 0, 4500, "eod", "S100", 0, 0, 0, "10 minis or 100 micros"]]}}}}}, "TPT": {"src": "https://takeprofittraderhelp.zendesk.com/hc/en-us", "plans": {"Test": {"eval": {"note": "End of day trailing drawdown that stops at your starting balance. No daily loss limit. Monthly subscription.", "rows": [[25, 1500, 1500, "eod", "S", 0, 50, 5, "3 minis or 30 micros"], [50, 3000, 2000, "eod", "S", 0, 50, 5, "6 minis or 60 micros"], [75, 4500, 2500, "eod", "S", 0, 50, 5, "9 minis or 90 micros"], [100, 6000, 3000, "eod", "S", 0, 50, 5, "12 minis or 120 micros"], [150, 9000, 4500, "eod", "S", 0, 50, 5, "15 minis or 150 micros"]]}, "funded": {"PRO": {"note": "Intraday trailing drawdown, including open profit, that stops at your starting balance. Profit above the buffer, which equals your drawdown, can be withdrawn. 80/20 split. Target is the buffer.", "rows": [[25, 1500, 1500, "intraday", "S", 0, 0, 0, ""], [50, 2000, 2000, "intraday", "S", 0, 0, 0, ""], [75, 2500, 2500, "intraday", "S", 0, 0, 0, ""], [100, 3000, 3000, "intraday", "S", 0, 0, 0, ""], [150, 4500, 4500, "intraday", "S", 0, 0, 0, ""]]}}}}}, "MFFU": {"src": "https://myfundedfutures.com/plans/pro", "plans": {"Pro": {"eval": {"note": "Drawdown keeps trailing until your first payout when funded.", "rows": [[50, 3000, 2000, "eod", 0, 0, 50, 2, "3 minis or 30 micros"], [100, 6000, 3000, "eod", 0, 0, 50, 2, "6 minis or 60 micros"], [150, 9000, 4500, "eod", 0, 0, 50, 2, "9 minis or 90 micros"]]}, "funded": {"Pro Funded": {"note": "Drawdown trails until your first approved payout, then locks at your starting balance plus $100, so set Floor stops trailing at to that after your first payout. Payouts start 14 days after your first trade, $1,000 minimum, 80/20. No news trading on funded. Target is the buffer.", "rows": [[50, 2100, 2000, "eod", 0, 0, 0, 0, "3 minis"], [100, 3100, 3000, "eod", 0, 0, 0, 0, "6 minis"], [150, 4600, 4500, "eod", 0, 0, 0, 0, "9 minis"]]}}}, "Rapid": {"eval": {"note": "MyFundedFutures’ Rapid page lists both end of day and intraday drawdown, so confirm the type on your dashboard.", "rows": [[25, 1500, 1000, "eod", "S100", 0, 50, 2, ""], [50, 3000, 2000, "eod", "S100", 0, 50, 2, ""], [100, 6000, 3000, "eod", "S100", 0, 50, 2, ""], [150, 9000, 4500, "eod", "S100", 0, 50, 2, ""]]}, "funded": {"Rapid Funded": {"note": "Intraday trailing when funded, per the Rapid FAQ. Daily payouts, $500 minimum, 90/10. Target is the buffer.", "rows": [[25, 1100, 1000, "intraday", "S100", 0, 0, 0, ""], [50, 2100, 2000, "intraday", "S100", 0, 0, 0, ""], [100, 3100, 3000, "intraday", "S100", 0, 0, 0, ""], [150, 4600, 4500, "intraday", "S100", 0, 0, 0, ""]]}}}, "Builder": {"eval": {"note": "The daily loss limit pauses trading for the day. No consistency rule in evaluation.", "rows": [[25, 1500, 1000, "eod", "S100", 600, 0, 1, "2 minis or 20 micros"], [50, 3000, 2000, "eod", "S100", 1000, 0, 1, "4 minis or 40 micros"], [100, 6000, 3000, "eod", "S100", 1750, 0, 1, "6 minis or 60 micros"], [150, 9000, 4500, "eod", "S100", 2500, 0, 1, "9 minis or 90 micros"]]}, "funded": {"Builder Funded": {"note": "Payouts every 48 hours with 2 qualifying days per cycle and 50% consistency. Target is the buffer plus the minimum payout. 80/20, up to 5 payouts.", "rows": [[25, 1350, 1000, "eod", "S100", 600, 50, 2, ""], [50, 2600, 2000, "eod", "S100", 1000, 50, 2, ""], [100, 4100, 3000, "eod", "S100", 1750, 50, 2, ""], [150, 6100, 4500, "eod", "S100", 2500, 50, 2, ""]]}}}}}, "Midgard": {"src": "https://midgardtrading.com/prop-firm-plans", "plans": {"Light Armor": {"eval": {"note": "Intraday trailing drawdown that locks once you reach the profit target. No daily loss limit. Funded path rules (Raid, Conquest, Ascension) aren’t published in detail, so enter them from your dashboard after you pass.", "rows": [[25, 1500, 1500, "intraday", "T", 0, 40, 3, "3 minis or 30 micros"], [50, 3000, 2500, "intraday", "T", 0, 40, 3, "5 minis or 50 micros"], [100, 6000, 3500, "intraday", "T", 0, 40, 3, "10 minis or 100 micros"], [150, 9000, 5000, "intraday", "T", 0, 40, 3, "15 minis or 150 micros"]]}}, "Plated": {"eval": {"note": "Same trial rules as Light Armor with 5 minimum days. Funded path rules (Raid, Conquest, Ascension) aren’t published in detail, so enter them from your dashboard after you pass.", "rows": [[25, 1500, 1500, "intraday", "T", 0, 40, 5, "3 minis or 30 micros"], [50, 3000, 2500, "intraday", "T", 0, 40, 5, "5 minis or 50 micros"], [100, 6000, 3500, "intraday", "T", 0, 40, 5, "10 minis or 100 micros"], [150, 9000, 5000, "intraday", "T", 0, 40, 5, "15 minis or 150 micros"]]}}}}};
+function presetVariants(firm,plan,stage){var p=PRESETS[firm]&&PRESETS[firm].plans[plan];if(!p)return [];if(stage==='eval')return p.eval?[['',p.eval]]:[];return p.funded?Object.keys(p.funded).map(function(k){return [k,p.funded[k]];}):[];}
+function presetRow(v,sizeK){var r=null;(v.rows||[]).forEach(function(x){if(x[0]===sizeK)r=x;});return r;}
+function describeRow(r){var lk=r[4]==='S100'?'locks at start +$100':r[4]==='S'?'stops at your starting balance':r[4]==='T'?'locks at the profit target':r[4]===0?'keeps trailing':'';
+  var b=[];if(r[1])b.push('target $'+r[1].toLocaleString());b.push('max drawdown $'+r[2].toLocaleString()+' '+(r[3]==='eod'?'end of day':r[3]==='intraday'?'intraday':'static')+(lk?', '+lk:''));
+  b.push(r[5]?'daily loss limit $'+r[5].toLocaleString():'no daily loss limit');if(r[6])b.push(r[6]+'% consistency');if(r[7])b.push(r[7]+(r[7]===1?' minimum day':' minimum days'));if(r[8])b.push('max size '+r[8]);
+  var s=b.join(', ');return s.charAt(0).toUpperCase()+s.slice(1)+'.';}
+function applyPreset(a,firm,plan,stage,variant,sizeK){
+  var vs=presetVariants(firm,plan,stage),v=null;vs.forEach(function(x){if(x[0]===(variant||'')||(!variant&&!v))v=x[1];});if(!v&&vs.length)v=vs[0][1];if(!v)return false;
+  var r=presetRow(v,sizeK);if(!r)return false;var sb=sizeK*1000;
+  a.startBal=sb;a.ddAmt=r[2];a.ddType=r[3];
+  if(r[4]==='S')delete a.ddLockAt;else if(r[4]==='S100')a.ddLockAt=sb+100;else if(r[4]==='T')a.ddLockAt=sb+r[1]-r[2];else a.ddLockAt=0;
+  ['target','dailyLimit','consistency','minDays'].forEach(function(k,i){var val=r[[1,5,6,7][i]];if(val)a[k]=val;else delete a[k];});
+  a.rulesNote=(v.note||'')+(r[8]?' Max size: '+r[8]+'.':'');
+  a.preset={firm:firm,plan:plan,stage:stage,variant:variant||'',size:sizeK,asOf:PRESET_ASOF};
+  return true;
 }
 
 var bkPending=null;
