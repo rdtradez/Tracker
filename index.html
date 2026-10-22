@@ -2143,6 +2143,14 @@ function tradeSummary(t){
   var c=tradeCalc(t);bits.push(c.ok?money(c.pnl):'not finished');
   return bits.join(', ');
 }
+function tradeMissing(t){
+  var m=[];if(!(t.acct||'').trim())m.push('account');
+  if(tradeMode(t)==='amount'){if(isNaN(num(t.amt)))m.push('dollar amount');return m;}
+  if(!t.dir)m.push('direction');if(isNaN(num(t.entry)))m.push('entry price');
+  var legs=Array.isArray(t.legs)?t.legs:[];if(!legs.length)m.push('an exit');
+  legs.forEach(function(L,i){var lab=legs.length>1?' '+(i+1):'';if(!(num(L.qty)>0))m.push('contracts for exit'+lab);if(isNaN(num(L.exit)))m.push('exit'+lab+' price');});
+  return m;
+}
 function collapseTrade(c,t,idx){
   var head=c.querySelector('.thead'),body=document.createElement('div');body.className='tbody';
   while(head.nextSibling)body.appendChild(head.nextSibling);
@@ -2154,7 +2162,17 @@ function collapseTrade(c,t,idx){
   function setOpen(o){open=o;TO.set(t,o);b.setAttribute('aria-expanded',o?'true':'false');body.hidden=!o;}
   b.addEventListener('click',function(){setOpen(!open);});
   body.__open=function(){setOpen(true);};
-  if(del){var dw=document.createElement('div');dw.style.textAlign='right';dw.appendChild(del);body.appendChild(dw);}
+  var sv=document.createElement('button');sv.type='button';sv.className='lockbtn';sv.textContent='Save trade';
+  var svm=document.createElement('p');svm.className='msg bad';svm.setAttribute('aria-live','polite');svm.style.margin='6px 0 0';
+  var svArm=false;
+  sv.addEventListener('click',function(){
+    var miss=tradeMissing(t);
+    if(miss.length&&!svArm){svArm=true;svm.textContent='Still missing: '+miss.join(', ')+'. Tap Save trade again to save it unfinished.';sv.textContent='Save unfinished';return;}
+    svArm=false;svm.textContent='';sv.textContent='Save trade';setOpen(false);upd();jTotals();
+    try{head.scrollIntoView({block:'nearest'});}catch(e){}
+  });
+  body.appendChild(sv);body.appendChild(svm);
+  if(del){var dw=document.createElement('div');dw.style.cssText='text-align:right;margin-top:10px';dw.appendChild(del);body.appendChild(dw);}
   c.appendChild(body);setOpen(open);
   var upd=function(){sm.textContent=tradeSummary(t);var cc=tradeCalc(t);sm.className='ts';};upd();tradeSums.push(upd);
 }
