@@ -269,10 +269,11 @@ async function handleInsights(request, env) {
       body: JSON.stringify({ model: env.AI_MODEL || "claude-sonnet-5-5", max_tokens: 1800, system: AI_SYSTEM, messages }),
     });
     j = await r.json();
-  } catch (e) { return json({ code: "error", error: "Could not reach the insights model" }, 502); }
+  } catch (e) { return json({ code: "error", error: "Could not reach the insights model: " + String(e && e.message || e).slice(0, 120) }, 502); }
   if (!r.ok) {
-    const t = j && j.error && j.error.type;
-    return json({ code: t === "authentication_error" || t === "permission_error" ? "setup" : t === "rate_limit_error" || t === "overloaded_error" ? "busy" : "error", error: "The insights model returned an error" }, 502);
+    const t = j && j.error && j.error.type, m = String((j && j.error && j.error.message) || "").slice(0, 200);
+    const code = /credit balance/i.test(m) ? "credits" : t === "authentication_error" || t === "permission_error" ? "setup" : t === "rate_limit_error" || t === "overloaded_error" ? "busy" : /model/i.test(m) && t === "not_found_error" ? "model" : "error";
+    return json({ code, error: "Model error " + r.status + (t ? " (" + t + ")" : "") + (m ? ": " + m : "") }, 502);
   }
   const text = (Array.isArray(j.content) ? j.content : []).filter((c) => c && c.type === "text").map((c) => c.text).join("\n").trim();
   if (!text) return json({ code: "error", error: "Empty answer" }, 502);

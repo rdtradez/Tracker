@@ -2415,7 +2415,7 @@ var aiHist=[],aiData0='',aiCtl=null;
 function aiInClaude(){return !!(window.claude&&typeof claude.use==='function');}
 function aiErr(code){return code==='not_granted'||code==='sampling_disabled'||code==='not_declared'||code==='capability_disabled'?'Insights aren’t allowed for this page. You can turn them on from the page’s Permissions menu.':
   code==='rate_limited'?'You’ve used today’s insights. Try again tomorrow.':code==='busy'?'Insights are busy right now. Try again in a few minutes.':code==='setup'?'Smart insights need one setup step on your reminder service (an API key). Nothing else needs to change.':
-  code==='offline'?'You’re offline. Connect and try again.':code==='cancelled'?'Stopped.':'Something went wrong getting your insights. Try again.';}
+  code==='credits'?'The API account is out of credit. Add credit under Billing at console.anthropic.com.':code==='model'?'The AI model name isn’t available on your API account.':code==='offline'?'You’re offline. Connect and try again.':code==='cancelled'?'Stopped.':'Something went wrong getting your insights. Try again.';}
 /* Ask the service (phone app) or the Claude app. Resolves {text,left} or rejects {code}. */
 async function aiAsk(question,signal,onText){
   if(aiInClaude()){var sample=null;try{sample=await claude.use('sample');}catch(e){}if(!sample)throw {code:'setup'};
@@ -2426,7 +2426,7 @@ async function aiAsk(question,signal,onText){
   var res;try{res=await fetch(nUrl()+'/insights',{method:'POST',signal:signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({device:nDevice(),data:aiData0,history:aiHist.slice(0,4),question:question||''})});}
   catch(e){throw {code:e&&e.name==='AbortError'?'cancelled':'offline'};}
   var j={};try{j=await res.json();}catch(e){}
-  if(!res.ok)throw {code:j.code||'error'};
+  if(!res.ok)throw {code:j.code||'error',detail:(j.error?String(j.error):'')+' (status '+res.status+')'};
   if(typeof j.text!=='string'||!j.text.trim())throw {code:'error'};
   return {text:j.text,left:typeof j.left==='number'?j.left:null};
 }
@@ -2437,7 +2437,7 @@ async function aiRun(question){
     out.textContent=r.text;meta.textContent=(question?'Answered ':'Insights from ')+new Date().toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'+(r.left!=null?' '+r.left+(r.left===1?' insight':' insights')+' left today.':'');
     try{localStorage.setItem('de-ai-last',JSON.stringify({text:r.text,meta:meta.textContent}));}catch(e){}
     document.getElementById('aiAskW').hidden=false;return r.text;}
-  catch(e){out.textContent=e&&e.text?e.text:(e&&e.code==='cancelled'?'':prev);meta.textContent=aiErr(e&&e.code);return null;}
+  catch(e){out.textContent=e&&e.text?e.text:(e&&e.code==='cancelled'?'':prev);meta.textContent=aiErr(e&&e.code)+(e&&e.detail&&e.code!=='rate_limited'&&e.code!=='cancelled'?' Details: '+String(e.detail).slice(0,240):'');return null;}
   finally{go.disabled=ask.disabled=false;stop.hidden=true;}
 }
 (function(){
