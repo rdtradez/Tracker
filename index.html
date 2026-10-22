@@ -235,6 +235,25 @@ h2.sech .sum{margin-left:auto;font-weight:500;font-size:.85rem;color:var(--muted
 .tcard .tbody{margin-top:10px}
 .tcard .tbody[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){h2.sech button svg,.tcard .tsum svg{transition:none}}
+.brk{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.brkhd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.brkhd b{font-size:.95rem}
+.brkhd button{min-height:36px;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:.82rem}
+.stp{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px}
+.stp button{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:1.3rem;cursor:pointer}
+.stp input{width:100%;text-align:center;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 6px;font:inherit}
+.stp input:disabled,.stp button:disabled{opacity:.4}
+.chk{display:flex;align-items:center;gap:8px;background:none;border:0;padding:0;color:var(--ink);font:inherit;font-weight:600;cursor:pointer;min-height:36px;margin-bottom:4px}
+.chk .box{flex:0 0 22px;width:22px;height:22px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center;color:transparent;font-size:.8rem;font-weight:700}
+.chk[aria-pressed="true"] .box{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tot{font-size:.82rem;margin:4px 0 0}
+.tot.p{color:var(--accent)}
+.tot.l{color:#e5675d}
+.brk .fld{margin-bottom:10px}
+.atmtop{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-bottom:10px}
+.atmbtns{display:flex;gap:6px}
+.atmbtns button{flex:1;min-height:42px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:.88rem}
+.atmsum{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.9rem;margin-top:4px}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -457,8 +476,7 @@ h2.sech .sum{margin-left:auto;font-weight:500;font-size:.85rem;color:var(--muted
       <div class="fld" style="margin:0"><span>Fees per contract, round trip ($)</span><input id="feeIn" inputmode="decimal" placeholder="0"></div>
     </div>
     <p class="msg">Leave fees at 0 to match platforms that show P&amp;L before commissions.</p>
-    <div id="atmList"></div>
-    <button class="addbtn" id="atmAdd" type="button">Add an ATM template</button>
+    <div id="atmEd"></div>
   </section>
 
   <h2 id="ckTitle">Daily checklist</h2>
@@ -1790,7 +1808,7 @@ var INSTR=[['MNQ',2],['NQ',20],['MES',5],['ES',50],['M2K',5],['RTY',50],['MYM',0
 function ptValue(inst){for(var i=0;i<INSTR.length;i++)if(INSTR[i][0]===inst)return INSTR[i][1];return 2;}
 function defInst(){var d=state.goals.defInst;return INSTR.some(function(x){return x[0]===d;})?d:'MNQ';}
 function feePer(){var f=Number(state.goals.fee);return f>0&&f<100?f:0;}
-function atms(){var a=state.goals.atms;if(!Array.isArray(a))a=state.goals.atms=[];return a;}
+function atms(){var a=state.goals.atms;if(!Array.isArray(a))a=state.goals.atms=[];a.forEach(function(x){if(x&&typeof x==='object')migrateAtm(x);});return a;}
 function num(v){if(v===null||v===undefined)return NaN;v=String(v).replace(/[$,\s]/g,'');return v===''?NaN:Number(v);}
 function tradeMode(t){return t.mode==='amount'||(t.mode!=='prices'&&!Array.isArray(t.legs))?'amount':'prices';}
 function tradeCalc(t){
@@ -1806,8 +1824,19 @@ function tradePnl(t){var c=tradeCalc(t);return c.ok?c.pnl:0;}
 function fmtPts(p){var r=Math.round(p*100)/100;return (r>0?'+':r<0?'−':'')+Math.abs(r).toFixed(2)+' pts';}
 function findAtm(t){var l=atms();for(var i=0;i<l.length;i++){if(t.atmId&&l[i].id===t.atmId)return l[i];}for(var k=0;k<l.length;k++){if((l[k].name||'').toLowerCase()===(t.atm||'').toLowerCase())return l[k];}return null;}
 function tickSize(inst){return /^(MGC|GC)$/.test(inst)?0.1:/^(MCL|CL)$/.test(inst)?0.01:/^(MYM|YM)$/.test(inst)?1:0.25;}
-function atmUnit(a){return a&&a.unit==='ticks'?'ticks':'pts';}
-function atmToPts(a,v){v=num(v);return atmUnit(a)==='ticks'?v*tickSize(a.inst||defInst()):v;}
+function atmUnit(a){return a&&(a.unit==='ticks'||a.unit==='usd')?a.unit:'pts';}
+function atmToPts(a,v){v=num(v);var u=atmUnit(a),inst=a.inst||defInst();return u==='ticks'?v*tickSize(inst):u==='usd'?v/ptValue(inst):v;}
+function ptsToAtm(a,p){var u=atmUnit(a),inst=a.inst||defInst();return u==='ticks'?p/tickSize(inst):u==='usd'?p*ptValue(inst):p;}
+function unitWord(a){var u=atmUnit(a);return u==='ticks'?'ticks':u==='usd'?'$':'points';}
+function fmtUnit(a,v){v=r2(v);return atmUnit(a)==='usd'?'$'+v.toLocaleString():v.toLocaleString()+' '+unitWord(a);}
+function migrateAtm(a){
+  if(!Array.isArray(a.brackets)){var st=a.stop;a.brackets=(Array.isArray(a.targets)&&a.targets.length?a.targets:[{qty:1,pts:''}]).map(function(x){var tp=x.pts===''||x.pts==null?'':Number(x.pts);var sl=st===''||st==null?'':Number(st);return {qty:Number(x.qty)||1,tpOn:tp!=='',tp:tp,slOn:sl!=='',sl:sl,stopType:'none',trigger:'',trail:''};});delete a.targets;delete a.stop;}
+  if(!a.brackets.length)a.brackets.push({qty:1,tpOn:true,tp:'',slOn:true,sl:'',stopType:'none',trigger:'',trail:''});
+  if(a.unit!=='ticks'&&a.unit!=='usd')a.unit='pts';return a;
+}
+function bTp(a,b){return b&&b.tpOn&&num(b.tp)>0?atmToPts(a,b.tp):NaN;}
+function bSl(a,b){return b&&b.slOn&&num(b.sl)>0?atmToPts(a,b.sl):NaN;}
+function newAtmId(){var rb=new Uint8Array(6);crypto.getRandomValues(rb);return 'a'+Array.prototype.map.call(rb,function(x){return ('0'+x.toString(16)).slice(-2);}).join('');}
 function r2(v){return Math.round(v*100)/100;}
 function tickRound(v,inst){var tick=tickSize(inst);var r=Math.round(v/tick)*tick;return String(Math.round(r*100)/100);}
 function tradeBody(t,c,rerender){
@@ -1832,7 +1861,7 @@ function tradeBody(t,c,rerender){
     var a=null;atms().forEach(function(x){if(x.id===sel.value)a=x;});
     if(!a){if(sel.value==='')t.atm='';delete t.atmId;save();rerender();return;}
     t.atm=a.name;t.atmId=a.id;t.inst=a.inst||defInst();
-    t.legs=(a.targets||[]).map(function(x){return {qty:String(x.qty||1),exit:''};});if(!t.legs.length)t.legs=[{qty:'1',exit:''}];
+    t.legs=(a.brackets||[]).map(function(x){return {qty:String(x.qty||1),exit:''};});if(!t.legs.length)t.legs=[{qty:'1',exit:''}];
     save();rerender();
   });
   var af=field('ATM',sel);c.appendChild(af);
@@ -1849,8 +1878,9 @@ function tradeBody(t,c,rerender){
   var hd=document.createElement('div');hd.className='lghd';hd.innerHTML='<span>Contracts</span><span>Exit price</span>';lab.appendChild(hd);
   var legBox=document.createElement('div');legBox.className='legs';lab.appendChild(legBox);c.appendChild(lab);
   var atm=findAtm(t),hintFns=[];
-  function legTarget(i){if(!atm||!atm.targets||!atm.targets[i])return NaN;var e=num(t.entry),sg=t.dir==='long'?1:t.dir==='short'?-1:0;if(isNaN(e)||!sg)return NaN;return e+sg*atmToPts(atm,atm.targets[i].pts);}
-  function legStop(){if(!atm)return NaN;var e=num(t.entry),sg=t.dir==='long'?1:t.dir==='short'?-1:0,sp=atmToPts(atm,atm.stop);if(isNaN(e)||!sg||!(sp>0))return NaN;return e-sg*sp;}
+  function legB(i){return atm&&atm.brackets?atm.brackets[Math.min(i,atm.brackets.length-1)]:null;}
+  function legTarget(i){var b=legB(i),e=num(t.entry),sg=t.dir==='long'?1:t.dir==='short'?-1:0,tp=bTp(atm,b);if(isNaN(e)||!sg||isNaN(tp))return NaN;return e+sg*tp;}
+  function legStop(i){var b=legB(i),e=num(t.entry),sg=t.dir==='long'?1:t.dir==='short'?-1:0,sp=bSl(atm,b);if(isNaN(e)||!sg||isNaN(sp))return NaN;return e-sg*sp;}
   t.legs.forEach(function(L,i){
     var row=document.createElement('div');row.className='leg';
     var q=document.createElement('input');q.setAttribute('inputmode','numeric');q.value=L.qty||'';q.placeholder='1';q.maxLength=4;q.setAttribute('aria-label','Contracts for exit '+(i+1));
@@ -1863,8 +1893,10 @@ function tradeBody(t,c,rerender){
       tb=document.createElement('button');tb.type='button';tb.textContent='Target';tb.setAttribute('aria-label','Exit '+(i+1)+' hit target');
       sb=document.createElement('button');sb.type='button';sb.textContent='Stop';sb.setAttribute('aria-label','Exit '+(i+1)+' stopped out');
       tb.addEventListener('click',function(){var v=legTarget(i);if(isNaN(v)){flash();return;}L.exit=tickRound(v,t.inst||defInst());L.kind='target';x.value=L.exit;save();upd();jTotals();marks();});
-      sb.addEventListener('click',function(){var v=legStop();if(isNaN(v)){flash();return;}L.exit=tickRound(v,t.inst||defInst());L.kind='stop';x.value=L.exit;save();upd();jTotals();marks();});
+      sb.addEventListener('click',function(){var v=legStop(i);if(isNaN(v)){flash();return;}L.exit=tickRound(v,t.inst||defInst());L.kind='stop';x.value=L.exit;save();upd();jTotals();marks();});
       qb.appendChild(tb);qb.appendChild(sb);
+      var lb=legB(i);if(lb&&lb.stopType==='be'){var bb=document.createElement('button');bb.type='button';bb.textContent='BE';bb.setAttribute('aria-label','Exit '+(i+1)+' stopped at breakeven');
+        bb.addEventListener('click',function(){var e=num(t.entry);if(isNaN(e)||!t.dir){flash();return;}L.exit=tickRound(e,t.inst||defInst());L.kind='stop';x.value=L.exit;save();upd();jTotals();marks();});qb.insertBefore(bb,sb.nextSibling);}
     }
     var del=document.createElement('button');del.type='button';del.textContent='×';del.setAttribute('aria-label','Remove exit '+(i+1));
     del.addEventListener('click',function(){if(t.legs.length<=1){L.exit='';L.qty='1';}else t.legs.splice(i,1);save();rerender();jTotals();});
@@ -1880,10 +1912,10 @@ function tradeBody(t,c,rerender){
   var add=document.createElement('button');add.type='button';add.textContent='Add exit';
   add.addEventListener('click',function(){if(t.legs.length>=20)return;t.legs.push({qty:'1',exit:''});save();rerender();});bar.appendChild(add);
   if(atm){var all=document.createElement('button');all.type='button';all.textContent='All stopped out';
-    all.addEventListener('click',function(){var v=legStop();if(isNaN(v)){flash();return;}t.legs.forEach(function(L){L.exit=tickRound(v,t.inst||defInst());L.kind='stop';});save();rerender();jTotals();});bar.appendChild(all);}
+    all.addEventListener('click',function(){var vs=t.legs.map(function(L,i){return legStop(i);});if(vs.some(isNaN)){flash();return;}t.legs.forEach(function(L,i){L.exit=tickRound(vs[i],t.inst||defInst());L.kind='stop';});save();rerender();jTotals();});bar.appendChild(all);}
   c.appendChild(bar);
   var res=document.createElement('div');res.className='tres';res.setAttribute('aria-live','polite');c.appendChild(res);
-  function flash(){res.innerHTML='';res.appendChild(document.createTextNode('Pick Long or Short and enter the entry price first, then tap Target or Stop.'));res.className='tres bad';}
+  function flash(){res.innerHTML='';res.appendChild(document.createTextNode('Pick Long or Short and enter the entry price first. Target and Stop also need those values set in the ATM.'));res.className='tres bad';}
   function upd(){
     var cc=tradeCalc(t);res.innerHTML='';res.className='tres';
     if(!cc.ok){res.appendChild(document.createTextNode('Fill in direction, entry price, and every exit to calculate this trade.'));return;}
@@ -1903,47 +1935,89 @@ function renderAtmSettings(){
   di.value=defInst();
   var fi=document.getElementById('feeIn');if(document.activeElement!==fi)fi.value=feePer()?String(feePer()):'';
   fi.onchange=function(){var v=num(fi.value);if(v>0&&v<100)state.goals.fee=Math.round(v*100)/100;else delete state.goals.fee;fi.value=feePer()?String(feePer()):'';save();renderJournal();};
-  var list=document.getElementById('atmList');list.innerHTML='';var infoFns=[];function infos(){infoFns.forEach(function(f){f();});}
-  atms().forEach(function(a,i){
-    var c=document.createElement('div');c.className='atmc';
-    function f(label,el){var d=document.createElement('div');d.className='fld';var s=document.createElement('span');s.textContent=label;d.appendChild(s);d.appendChild(el);return d;}
-    var nm=document.createElement('input');nm.value=a.name||'';nm.maxLength=30;nm.placeholder='Normal ATR';nm.addEventListener('change',function(){var v=nm.value.trim();if(v){a.name=v;save();renderJournal();}else nm.value=a.name||'';});
-    c.appendChild(f('Name',nm));
-    var U=atmUnit(a),UL=U==='ticks'?'ticks':'points';
-    c.appendChild(f('Measure stops and targets in',seg([['pts','Points'],['ticks','Ticks']],U,function(v){if(v===atmUnit(a))return;var ts=tickSize(a.inst||defInst()),k=v==='ticks'?1/ts:ts;
-      if(a.stop!=null&&a.stop!=='')a.stop=r2(num(a.stop)*k);(a.targets||[]).forEach(function(x){if(x.pts!==''&&x.pts!=null)x.pts=r2(num(x.pts)*k);});
-      a.unit=v;state.goals.atmUnit=v;save();renderAtmSettings();renderJournal();})));
-    var g=document.createElement('div');g.className='g2';
-    var is=document.createElement('select');INSTR.forEach(function(x){var o=document.createElement('option');o.value=x[0];o.textContent=x[0];if((a.inst||defInst())===x[0])o.selected=true;is.appendChild(o);});
-    is.addEventListener('change',function(){a.inst=is.value;save();infos();});
-    var st=document.createElement('input');st.setAttribute('inputmode','decimal');st.value=a.stop==null?'':String(a.stop);st.placeholder=U==='ticks'?'60':'15';
-    st.addEventListener('change',function(){var v=num(st.value);if(v>0&&v<10000)a.stop=v;else delete a.stop;st.value=a.stop==null?'':String(a.stop);save();infos();renderJournal();});
-    g.appendChild(f('Instrument',is));g.appendChild(f('Stop loss ('+UL+')',st));c.appendChild(g);
-    var th=document.createElement('div');th.className='lghd';th.style.gridTemplateColumns='minmax(0,1fr) minmax(0,1fr) 40px';th.innerHTML='<span>Contracts</span><span>Target ('+UL+')</span><span></span>';c.appendChild(th);
-    if(!Array.isArray(a.targets)||!a.targets.length)a.targets=[{qty:1,pts:''}];
-    a.targets.forEach(function(tg,k){
-      var r=document.createElement('div');r.className='atmt';
-      var q=document.createElement('input');q.setAttribute('inputmode','numeric');q.value=tg.qty==null?'':String(tg.qty);q.setAttribute('aria-label','Contracts for target '+(k+1));
-      q.addEventListener('change',function(){var v=Math.round(num(q.value));if(v>0&&v<1000)tg.qty=v;q.value=String(tg.qty||1);save();infos();});
-      var p=document.createElement('input');p.setAttribute('inputmode','decimal');p.value=tg.pts==null?'':String(tg.pts);p.placeholder=U==='ticks'?'120':'30';p.setAttribute('aria-label','Target '+(k+1)+' in '+UL);
-      p.addEventListener('change',function(){var v=num(p.value);if(v>0&&v<10000)tg.pts=v;else tg.pts='';p.value=tg.pts===''?'':String(tg.pts);save();infos();});
-      var d=document.createElement('button');d.type='button';d.textContent='×';d.setAttribute('aria-label','Remove target '+(k+1));
-      d.addEventListener('click',function(){if(a.targets.length<=1)return;a.targets.splice(k,1);save();renderAtmSettings();});
-      r.appendChild(q);r.appendChild(p);r.appendChild(d);c.appendChild(r);
-    });
-    var info=document.createElement('p');info.className='msg';c.appendChild(info);
-    infoFns.push(function(){var tot=a.targets.reduce(function(n,x){return n+(Number(x.qty)||0);},0);info.textContent=tot+(tot===1?' contract total.':' contracts total.')+(a.stop?' Stop is '+r2(atmToPts(a,a.stop))+' points ('+Math.round(atmToPts(a,a.stop)/tickSize(a.inst||defInst()))+' ticks). Risk at the stop: $'+r2(tot*atmToPts(a,a.stop)*ptValue(a.inst||defInst())).toLocaleString()+'.':'');});
-    var bb=document.createElement('div');bb.className='rwbtns';
-    var at=document.createElement('button');at.type='button';at.textContent='Add target';at.addEventListener('click',function(){if(a.targets.length>=10)return;a.targets.push({qty:1,pts:''});save();renderAtmSettings();});
-    var rm=document.createElement('button');rm.type='button';rm.textContent='Delete template';
-    rm.addEventListener('click',function(){if(!rm.dataset.arm){rm.dataset.arm='1';rm.textContent='Tap again to delete';return;}atms().splice(i,1);save();renderAtmSettings();renderJournal();});
-    bb.appendChild(at);bb.appendChild(rm);c.appendChild(bb);
-    list.appendChild(c);
+  var box=document.getElementById('atmEd');box.innerHTML='';
+  var list=atms(),a=null;list.forEach(function(x){if(x.id===state.goals.atmSel)a=x;});if(!a)a=list[0]||null;
+  function rr(){save();renderAtmSettings();renderJournal();}
+  function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function fld(label,node){var d=el('div','fld');d.appendChild(el('span',null,label));d.appendChild(node);return d;}
+  function stepper(val,step,min,onSet,label,disabled){
+    var w=el('div','stp'),m=el('button',null,'−'),i=el('input'),p=el('button',null,'+');
+    m.type=p.type='button';m.setAttribute('aria-label','Decrease '+label);p.setAttribute('aria-label','Increase '+label);
+    i.setAttribute('inputmode','decimal');i.value=val===''||val==null?'':String(val);i.setAttribute('aria-label',label);i.maxLength=8;
+    if(disabled){i.disabled=m.disabled=p.disabled=true;}
+    function setv(v){v=r2(Math.max(min,v));onSet(v);}
+    m.addEventListener('click',function(){var v=num(i.value);setv((isNaN(v)?0:v)-step);});
+    p.addEventListener('click',function(){var v=num(i.value);setv((isNaN(v)?0:v)+step);});
+    i.addEventListener('change',function(){var v=num(i.value);if(isNaN(v)||v<min){onSet('');return;}setv(v);});
+    w.appendChild(m);w.appendChild(i);w.appendChild(p);return w;
+  }
+  /* strategy picker */
+  var top=el('div','atmtop');
+  if(list.length){
+    var sel=el('select');sel.setAttribute('aria-label','Strategy selection');
+    list.forEach(function(x){var o=el('option',null,x.name||'Untitled');o.value=x.id;if(a&&x.id===a.id)o.selected=true;sel.appendChild(o);});
+    sel.addEventListener('change',function(){state.goals.atmSel=sel.value;save();renderAtmSettings();});
+    top.appendChild(fld('Strategy selection',sel));
+  }
+  var bt=el('div','atmbtns');
+  var nb=el('button',null,'New');nb.type='button';
+  nb.addEventListener('click',function(){if(list.length>=20)return;var n={id:newAtmId(),name:'ATM '+(list.length+1),inst:defInst(),unit:state.goals.atmUnit||'ticks',brackets:[{qty:1,tpOn:true,tp:'',slOn:true,sl:'',stopType:'none',trigger:'',trail:''}]};list.push(n);state.goals.atmSel=n.id;rr();});
+  bt.appendChild(nb);
+  if(a){
+    var dup=el('button',null,'Duplicate');dup.type='button';
+    dup.addEventListener('click',function(){if(list.length>=20)return;var c=JSON.parse(JSON.stringify(a));c.id=newAtmId();c.name=(a.name||'ATM')+' copy';list.push(c);state.goals.atmSel=c.id;rr();});
+    var dl=el('button',null,'Delete');dl.type='button';
+    dl.addEventListener('click',function(){if(!dl.dataset.arm){dl.dataset.arm='1';dl.textContent='Tap again';return;}list.splice(list.indexOf(a),1);delete state.goals.atmSel;rr();});
+    bt.appendChild(dup);bt.appendChild(dl);
+  }
+  top.appendChild(bt);box.appendChild(top);
+  if(!a){box.appendChild(el('p','msg','Tap New to set up your first ATM, like 50K Normal ATR or 50K High ATR.'));return;}
+  /* template editor */
+  var ed=el('div','atmc');
+  var nm=el('input');nm.value=a.name||'';nm.maxLength=30;nm.placeholder='50K High ATR';
+  nm.addEventListener('change',function(){var v=nm.value.trim();if(v){a.name=v;rr();}else nm.value=a.name||'';});
+  ed.appendChild(fld('Name',nm));
+  var is=el('select');INSTR.forEach(function(x){var o=el('option',null,x[0]+' ($'+x[1]+' per point)');o.value=x[0];if((a.inst||defInst())===x[0])o.selected=true;is.appendChild(o);});
+  is.addEventListener('change',function(){a.inst=is.value;rr();});
+  ed.appendChild(fld('Instrument',is));
+  var U=atmUnit(a);
+  ed.appendChild(fld('Unit',seg([['ticks','Ticks'],['pts','Points'],['usd','$']],U,function(v){
+    if(v===U)return;
+    a.brackets.forEach(function(b){['tp','sl','trigger','trail'].forEach(function(k){if(b[k]!==''&&b[k]!=null&&!isNaN(num(b[k]))){var p=atmToPts(a,b[k]);var tmp={unit:v,inst:a.inst};b[k]=r2(ptsToAtm(tmp,p));}});});
+    a.unit=v;state.goals.atmUnit=v;rr();
+  })));
+  var step=U==='ticks'?1:U==='usd'?5:0.25,pv=ptValue(a.inst||defInst());
+  a.brackets.forEach(function(b,i){
+    var c=el('div','brk'),h=el('div','brkhd');h.appendChild(el('b',null,'Bracket '+(i+1)));
+    if(a.brackets.length>1){var rm=el('button',null,'Remove');rm.type='button';rm.setAttribute('aria-label','Remove bracket '+(i+1));rm.addEventListener('click',function(){a.brackets.splice(i,1);rr();});h.appendChild(rm);}
+    c.appendChild(h);
+    c.appendChild(fld('Quantity',stepper(b.qty,1,1,function(v){b.qty=v===''?1:Math.round(v);rr();},'quantity for bracket '+(i+1))));
+    function side(key,onKey,title,cls,word){
+      var w=el('div','fld');var ck=el('button','chk');ck.type='button';ck.setAttribute('aria-pressed',b[onKey]?'true':'false');
+      ck.innerHTML='<span class="box" aria-hidden="true">✓</span><span></span>';ck.lastChild.textContent=title;
+      ck.addEventListener('click',function(){b[onKey]=!b[onKey];rr();});w.appendChild(ck);
+      w.appendChild(stepper(b[key],step,0,function(v){b[key]=v;rr();},title.toLowerCase()+' for bracket '+(i+1)+' in '+unitWord(a),!b[onKey]));
+      var v=num(b[key]);
+      if(b[onKey]&&v>0){var pts=atmToPts(a,v),usd=r2(pts*pv*b.qty);
+        w.appendChild(el('p','tot '+cls,word+': '+(U==='usd'?'$'+usd.toLocaleString():r2(v*b.qty).toLocaleString()+' '+unitWord(a)+' ($'+usd.toLocaleString()+')')+(U!=='pts'?', '+r2(pts)+' points each':'')));}
+      return w;
+    }
+    var g=el('div');g.appendChild(side('tp','tpOn','Take profit','p','Total profit'));g.appendChild(side('sl','slOn','Stop loss','l','Total loss'));c.appendChild(g);
+    var ss=el('select');[['none','None'],['be','Move to breakeven'],['trail','Trailing stop']].forEach(function(o){var op=el('option',null,o[1]);op.value=o[0];if((b.stopType||'none')===o[0])op.selected=true;ss.appendChild(op);});
+    ss.addEventListener('change',function(){b.stopType=ss.value;rr();});c.appendChild(fld('Stop strategy',ss));
+    if(b.stopType==='be'||b.stopType==='trail')c.appendChild(fld(b.stopType==='be'?'Move stop to breakeven after ('+unitWord(a)+')':'Trailing trigger ('+unitWord(a)+')',stepper(b.trigger,step,0,function(v){b.trigger=v;rr();},'trigger for bracket '+(i+1))));
+    if(b.stopType==='trail')c.appendChild(fld('Trail distance after trigger ('+unitWord(a)+')',stepper(b.trail,step,0,function(v){b.trail=v;rr();},'trail distance for bracket '+(i+1))));
+    ed.appendChild(c);
   });
-  infos();
+  var ab=el('button','addbtn','+ Add bracket');ab.type='button';
+  ab.addEventListener('click',function(){if(a.brackets.length>=10)return;var last=a.brackets[a.brackets.length-1]||{};a.brackets.push({qty:1,tpOn:true,tp:'',slOn:true,sl:last.sl===undefined?'':last.sl,stopType:'none',trigger:'',trail:''});rr();});
+  ed.appendChild(ab);
+  var q=0,mp=0,ml=0,allTp=true,allSl=true;a.brackets.forEach(function(b){q+=Number(b.qty)||0;var t=bTp(a,b),s=bSl(a,b);if(isNaN(t))allTp=false;else mp+=t*pv*b.qty;if(isNaN(s))allSl=false;else ml+=s*pv*b.qty;});
+  var sum=el('div','atmsum');sum.textContent=q+(q===1?' contract.':' contracts.')+(allTp?' If every target hits: +$'+r2(mp).toLocaleString()+'.':'')+(allSl?' If every stop hits: −$'+r2(ml).toLocaleString()+'.':' Set a stop loss on every bracket to see your full risk.');
+  ed.appendChild(sum);
+  box.appendChild(ed);
 }
-document.getElementById('atmAdd').addEventListener('click',function(){var l=atms();if(l.length>=20)return;var rb=new Uint8Array(6);crypto.getRandomValues(rb);
-  l.push({id:'a'+Array.prototype.map.call(rb,function(x){return ('0'+x.toString(16)).slice(-2);}).join(''),name:'ATM '+(l.length+1),inst:defInst(),unit:state.goals.atmUnit==='ticks'?'ticks':'pts',stop:'',targets:[{qty:1,pts:''}]});save();renderAtmSettings();});
+
 
 /* ---------- collapsible sections ---------- */
 var SEC_KEY='de-secs',secState={};try{secState=JSON.parse(localStorage.getItem(SEC_KEY)||'{}')||{};}catch(e){secState={};}
