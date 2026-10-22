@@ -220,6 +220,21 @@ main{padding-bottom:110px !important}
 .atmc input{width:100%;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
 .atmt{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px;gap:6px;align-items:center;margin-bottom:6px}
 .atmt button{height:42px;border-radius:9px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+h2.sech{margin:6px 0 8px;font-size:1.05rem}
+h2.sech button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;border-bottom:1px solid var(--line);padding:14px 2px;color:var(--ink);font:inherit;font-weight:700;text-align:left;cursor:pointer}
+h2.sech button svg{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:var(--muted);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+h2.sech button[aria-expanded="true"] svg{transform:rotate(180deg)}
+h2.sech .sum{margin-left:auto;font-weight:500;font-size:.85rem;color:var(--muted)}
+.secbd{padding-bottom:6px}
+.secbd[hidden]{display:none}
+.tcard .tsum{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:2px 0;color:var(--ink);font:inherit;text-align:left;cursor:pointer;min-height:44px}
+.tcard .tsum b{white-space:nowrap}
+.tcard .tsum .ts{flex:1;color:var(--muted);font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tcard .tsum svg{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:var(--muted);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.tcard .tsum[aria-expanded="true"] svg{transform:rotate(180deg)}
+.tcard .tbody{margin-top:10px}
+.tcard .tbody[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){h2.sech button svg,.tcard .tsum svg{transition:none}}
 .foot{margin-top:26px;text-align:center}
 .foot button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px 18px;cursor:pointer;color:var(--muted)}
 .tip{color:var(--muted);font-size:.85rem;margin:16px 0 0}
@@ -300,24 +315,16 @@ main{padding-bottom:110px !important}
   <div class="foot"><button id="clearDay" type="button">Clear this day</button></div>
   </div>
   <div class="tab" data-tab="trades" hidden>
-  <h2 id='journalTop' style='scroll-margin-top:12px'>Trade journal</h2>
+  <div id='riskBanner' role='status' aria-live='polite'></div>
+  <h2 id='preTitle'>Pre-trade check</h2>
+  <div class='jcard' id='preCard'><p class='msg' style='margin:0 0 10px'>Answer these before your first trade.</p><div id='preList'></div><p class='msg' id='preMsg' style='margin:6px 0 0'></p></div>
+  <h2 id='journalTop' style='scroll-margin-top:12px'>Today’s trades</h2>
   <p class='msg' id='jDateLine'></p>
-  <div class='jcard' id='preCard'><b>Pre-trade check</b><p class='msg' style='margin:4px 0 10px'>Answer these before your first trade.</p><div id='preList'></div><p class='msg' id='preMsg' style='margin:6px 0 0'></p></div>
   <section class='stats' aria-label='Journal summary'>
     <div class='stat'><b id='jWeek'>$0</b><span>this week</span></div>
     <div class='stat'><b id='jAll'>$0</b><span>all logged trades</span></div>
     <div class='stat'><b id='jPlan'>None yet</b><span>followed plan</span></div>
   </section>
-  <div id='jAccts' style='margin-top:10px'></div>
-  <section class='water' id='limSec' style='margin-top:10px' aria-label='Daily limits'>
-    <b>Daily limits</b>
-    <div class='g2' style='margin-top:8px'>
-      <div class='fld' style='margin:0'><span>Max loss per day ($)</span><input id='limLoss' inputmode='decimal' placeholder='300'></div>
-      <div class='fld' style='margin:0'><span>Max trades per day</span><input id='limTrades' inputmode='numeric' placeholder='3'></div>
-    </div>
-  </section>
-  <div id='riskBanner' role='status' aria-live='polite'></div>
-  <section class='lockc' id='lockCard' aria-label='Account lockout'></section>
   <div class='jcard' style='margin-top:10px'>
     <button type='button' class='item' id='noTradeBtn' aria-pressed='false' style='margin:0'><span class='box' aria-hidden='true'>✓</span><span class='label'>No trade day</span></button>
     <div class='fld' id='ntReasonWrap' style='margin:10px 0 0'><span>Reason</span><input id='ntReason' placeholder='Weekend, holiday, news day, or sat out on purpose'></div>
@@ -333,6 +340,16 @@ main{padding-bottom:110px !important}
     <div class='fld'><span>Mistake</span><input id='jMis'></div>
     <div class='fld'><span>Tomorrow’s adjustment</span><input id='jTom'></div>
   </div>
+  <h2 id='limTitle'>Limits and lockout</h2>
+  <section class='water' id='limSec' style='margin-top:10px' aria-label='Daily limits'>
+    <div class='g2' style='margin-top:8px'>
+      <div class='fld' style='margin:0'><span>Max loss per day ($)</span><input id='limLoss' inputmode='decimal' placeholder='300'></div>
+      <div class='fld' style='margin:0'><span>Max trades per day</span><input id='limTrades' inputmode='numeric' placeholder='3'></div>
+    </div>
+  </section>
+  <section class='lockc' id='lockCard' aria-label='Account lockout'></section>
+  <h2 id='byAcctTitle'>Results by account</h2>
+  <div id='jAccts'></div>
   <h2>Journal history</h2>
   <div id='jHist'></div>
   <datalist id='accts'><option value='Midgard 50K'><option value='Tradeify'><option value='Apex'><option value='FFF Velocity'><option value='FFF Prime'><option value='Halcyon'></datalist>
@@ -576,8 +593,8 @@ function render(){
     }else dEl.appendChild(makeItem(x[0],x[1],state.days[view]));
   });
   WEEKLY.forEach(function(x){wEl.appendChild(makeItem(x[0],x[1],state.weeks[ws]));});
-  document.getElementById("weekTitle").textContent="Weekly review, week of "+parse(ws).toLocaleDateString(undefined,{month:"short",day:"numeric"});
-  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();renderChecklist();renderWeight();renderLimits();renderRisk();renderLock();renderPayout();renderInsights();renderAtmSettings();renderProfile();var chTab=document.querySelector('.tab[data-tab="charts"]');if(chTab&&!chTab.hidden){renderInsightsTab();renderCharts();}if(typeof renderNotif==='function')renderNotif();
+  setSecTitle("weekTitle","Weekly review, week of "+parse(ws).toLocaleDateString(undefined,{month:"short",day:"numeric"}));
+  renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();renderChecklist();renderWeight();renderLimits();renderRisk();renderLock();renderPayout();renderInsights();renderAtmSettings();if(typeof updSecSums==='function')updSecSums();renderProfile();var chTab=document.querySelector('.tab[data-tab="charts"]');if(chTab&&!chTab.hidden){renderInsightsTab();renderCharts();}if(typeof renderNotif==='function')renderNotif();
 }
 
 function jEntry(){var e=state.journal[view];if(!e){e={trades:[],mb:'',ma:'',well:'',mis:'',tom:''};state.journal[view]=e;}return e;}
@@ -609,7 +626,7 @@ function inp(val,ph,type,mode,onc,list){
   return i;
 }
 function renderJournal(){
-  var e=jEntry(),box=document.getElementById('jTrades');box.innerHTML='';
+  var e=jEntry(),box=document.getElementById('jTrades');box.innerHTML='';tradeSums=[];
   document.getElementById('jDateLine').textContent='Journal for '+parse(view).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
   e.trades.forEach(function(t,idx){
     var c=document.createElement('div');c.className='tcard';
@@ -626,6 +643,7 @@ function renderJournal(){
     c.appendChild(field('Setup and reason',inp(t.setup,'','text','',function(v){t.setup=v;save();})));
     c.appendChild(field('Followed plan',seg([['yes','Yes'],['no','No']],t.plan,function(v){t.plan=v;save();jTotals();})));
     c.appendChild(field('Price 15 to 30 min after exit',inp(t.after,'','text','',function(v){t.after=v;save();})));
+    collapseTrade(c,t,idx);
     box.appendChild(c);
   });
   var nt=!!e.noTrade;
@@ -647,6 +665,7 @@ function renderJournal(){
   jTotals();
 }
 function jTotals(){
+  tradeSums.forEach(function(f){f();});if(typeof updSecSums==='function')updSecSums();
   if(typeof renderLock==='function')renderLock();
   renderLevel();renderRisk();if(typeof renderPayout==='function'){renderPayout();renderInsights();}
   var d=dayPnl(view),el=document.getElementById('jDayTotal');
@@ -685,7 +704,7 @@ document.getElementById('addTrade').addEventListener('click',function(){
   if(e.lock&&e.lock.at&&!lockTry){lockTry=true;renderLock();document.getElementById('lockCard').scrollIntoView({block:'nearest'});return;}
   if(e.lock&&e.lock.at){e.afterLock=(e.afterLock||0)+1;lockTry=false;}
   if(!e.noTrade&&!preDone(e))preNag=true;
-  e.trades.push({acct:lastAcct,dir:'',time:'',entry:'',exit:'',atm:'',how:'stop',res:'loss',amt:'',setup:'',plan:'',after:'',mode:'prices',inst:defInst(),legs:[{qty:'1',exit:''}]});
+  var nt0={acct:lastAcct,dir:'',time:'',entry:'',exit:'',atm:'',how:'stop',res:'loss',amt:'',setup:'',plan:'',after:'',mode:'prices',inst:defInst(),legs:[{qty:'1',exit:''}]};e.trades.push(nt0);TO.set(nt0,true);
   save();renderJournal();
 });
 var GOALS_W=[
@@ -711,6 +730,7 @@ function renderGoals(){
 }
 function waterGoal(){var g=state.goals&&state.goals.waterGoal;return (typeof g==='number'&&g>0)?g:8;}
 function renderWater(){
+  if(typeof updSecSums==='function')setTimeout(updSecSums,0);
   var day=state.days[view]||(state.days[view]={});
   var n=day.water||0,g=waterGoal();
   document.getElementById('wCount').textContent=n;
@@ -899,6 +919,7 @@ function renderLevel(){
   if(lvl!==seen){try{localStorage.setItem('tracker-lvl-seen',String(lvl));}catch(e){}}
 }
 function updateScore(){
+  if(typeof updSecSums==='function')updSecSums();
   renderLevel();
   renderStats();
   var n=countFor(view);
@@ -1740,6 +1761,7 @@ function renderLock(){
     card.appendChild(ub);return;
   }
   var urgent=rs.hit||e.noTrade;
+  if(rs.hit&&view===today()){var lt=document.getElementById('limTitle');if(lt&&lt.__body&&lt.__body.hidden)setSec(lt,true,false);}
   card.className='lockc'+(urgent?' urgent':'');
   card.appendChild(h3(rs.hit?'Lock your accounts now':e.noTrade?'No trade day: lock your accounts':'Lock out when you’re done'));
   card.appendChild(p(rs.hit?'You hit your daily limit. Lock every account in your trading platform so you can’t be tempted, then confirm below.':e.noTrade?'Lock your accounts in your trading platform now so a no trade day stays a no trade day.':n?'Finished for the day? Lock each account in your trading platform, then confirm here.':'When you’re done for the day, lock each account in your trading platform and confirm here.'));
@@ -1914,6 +1936,78 @@ function renderAtmSettings(){
 }
 document.getElementById('atmAdd').addEventListener('click',function(){var l=atms();if(l.length>=20)return;var rb=new Uint8Array(6);crypto.getRandomValues(rb);
   l.push({id:'a'+Array.prototype.map.call(rb,function(x){return ('0'+x.toString(16)).slice(-2);}).join(''),name:'ATM '+(l.length+1),inst:defInst(),stop:'',targets:[{qty:1,pts:''}]});save();renderAtmSettings();});
+
+/* ---------- collapsible sections ---------- */
+var SEC_KEY='de-secs',secState={};try{secState=JSON.parse(localStorage.getItem(SEC_KEY)||'{}')||{};}catch(e){secState={};}
+var SEC_OPEN_DEFAULT={journalTop:1,preTitle:1,secDaily:1,secInsights:1,profTitle:1,secGroup:1,secWeight:0};
+function secKey(h){return h.id||('sec'+h.textContent.trim().split(/\s+/)[0].replace(/[^A-Za-z]/g,''));}
+function setSec(h,open,remember){var b=h.querySelector('button'),bd=h.__body;if(!b||!bd)return;b.setAttribute('aria-expanded',open?'true':'false');bd.hidden=!open;
+  if(remember){secState[secKey(h)]=open?1:0;try{localStorage.setItem(SEC_KEY,JSON.stringify(secState));}catch(e){}}}
+function openSecFor(el){var p=el;while(p&&p!==document.body){if(p.classList&&p.classList.contains('secbd')&&p.hidden&&p.__head)setSec(p.__head,true,false);if(p.classList&&p.classList.contains('tbody')&&p.hidden&&p.__open)p.__open();p=p.parentNode;}}
+function setSecTitle(id,text){var h=document.getElementById(id);if(!h)return;var l=h.querySelector('.lbl');if(l)l.textContent=text;else h.textContent=text;}
+function setSecSum(id,text){var h=document.getElementById(id);if(!h)return;var s=h.querySelector('.sum');if(s)s.textContent=text||'';}
+(function buildSections(){
+  document.querySelectorAll('.tab').forEach(function(tab){
+    var hs=[].filter.call(tab.children,function(c){return c.tagName==='H2';});
+    if(hs.length<2)return;
+    hs.forEach(function(h,i){
+      var body=document.createElement('div');body.className='secbd';
+      var n=h.nextSibling;while(n&&!(n.nodeType===1&&n.tagName==='H2')){var nx=n.nextSibling;body.appendChild(n);n=nx;}
+      h.parentNode.insertBefore(body,h.nextSibling);
+      var label=h.textContent.trim();h.textContent='';h.classList.add('sech');
+      var b=document.createElement('button');b.type='button';
+      var l=document.createElement('span');l.className='lbl';l.textContent=label;
+      var sm=document.createElement('span');sm.className='sum';
+      b.appendChild(l);b.appendChild(sm);b.insertAdjacentHTML('beforeend','<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>');h.appendChild(b);
+      h.__body=body;body.__head=h;
+      var k=secKey(h);if(!h.id)h.id=k;var open=(k in secState)?!!secState[k]:(k in SEC_OPEN_DEFAULT?!!SEC_OPEN_DEFAULT[k]:i===0);
+      setSec(h,open,false);
+      b.addEventListener('click',function(){setSec(h,b.getAttribute('aria-expanded')!=='true',true);});
+    });
+  });
+  var sproto=(window.HTMLElement&&Object.prototype.hasOwnProperty.call(HTMLElement.prototype,'scrollIntoView'))?HTMLElement.prototype:Element.prototype,siv=sproto.scrollIntoView;
+  sproto.scrollIntoView=function(){try{openSecFor(this);}catch(e){}return siv.apply(this,arguments);};
+})();
+function updSecSums(){
+  try{
+    var t=view,day=state.days[t]||{},n=countFor(t);
+    setSecSum('secDaily',n+' of '+NB());
+    setSecSum('exTitle',exMin(t)?exMin(t)+' min':'');
+    setSecSum('secWater',(day.water||0)+' of '+waterGoal());
+    var j=state.journal[t],tn=j?j.trades.length:0;
+    setSecSum('journalTop',j&&j.noTrade?'No trade day':tn?tn+(tn===1?' trade, ':' trades, ')+money(dayPnl(t)):'');
+    var pre=j&&j.pre||{},left=PRE.filter(function(p){return !pre[p[0]];}).length;
+    setSecSum('preTitle',j&&j.noTrade?'':left?left+' left':'Done');
+    setSecSum('limTitle',isLocked(t)?'Locked':riskState(t).hit?'Limit hit':'');
+    var w=weighIns();setSecSum('wtTitle',w.length?w[w.length-1][1]+' lbs':'');
+    var a=accounts().filter(function(x){return stageOf(x)!=='closed';}).length;setSecSum('ppTitle',a?a+(a===1?' account':' accounts'):'');
+  }catch(e){}
+}
+
+/* ---------- collapsible trade cards ---------- */
+var TO=(typeof WeakMap==='function')?new WeakMap():{set:function(){},get:function(){},has:function(){return false;}};
+var tradeSums=[];
+function tradeSummary(t){
+  var bits=[];if(t.dir)bits.push(t.dir==='long'?'Long':'Short');
+  if(t.acct)bits.push(t.acct);
+  var c=tradeCalc(t);bits.push(c.ok?money(c.pnl):'not finished');
+  return bits.join(', ');
+}
+function collapseTrade(c,t,idx){
+  var head=c.querySelector('.thead'),body=document.createElement('div');body.className='tbody';
+  while(head.nextSibling)body.appendChild(head.nextSibling);
+  var del=head.querySelector('.del');head.innerHTML='';
+  var b=document.createElement('button');b.type='button';b.className='tsum';
+  var nm=document.createElement('b');nm.textContent='Trade '+(idx+1);var sm=document.createElement('span');sm.className='ts';
+  b.appendChild(nm);b.appendChild(sm);b.insertAdjacentHTML('beforeend','<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>');head.appendChild(b);head.style.marginBottom='0';
+  var open=TO.has(t)?TO.get(t):!hasPnl(t);
+  function setOpen(o){open=o;TO.set(t,o);b.setAttribute('aria-expanded',o?'true':'false');body.hidden=!o;}
+  b.addEventListener('click',function(){setOpen(!open);});
+  body.__open=function(){setOpen(true);};
+  if(del){var dw=document.createElement('div');dw.style.textAlign='right';dw.appendChild(del);body.appendChild(dw);}
+  c.appendChild(body);setOpen(open);
+  var upd=function(){sm.textContent=tradeSummary(t);var cc=tradeCalc(t);sm.className='ts';};upd();tradeSums.push(upd);
+}
 
 var bkPending=null;
 function bkMsg(t){document.getElementById('bkMsg').textContent=t;}
