@@ -440,6 +440,7 @@ h2.sech .sum{margin-left:auto;font-weight:500;font-size:.85rem;color:var(--muted
   </section>
 
   <h2 id="weekTitle">Weekly review</h2>
+  <div id="weekStats"></div>
   <div id="weekly"></div>
 
   <h2>Yearly goals</h2>
@@ -517,7 +518,7 @@ h2.sech .sum{margin-left:auto;font-weight:500;font-size:.85rem;color:var(--muted
     <p class="msg" id="nMsg" aria-live="polite"></p>
   </section>
 
-  <h2>Backup</h2>
+  <h2 id="bkTitle">Backup</h2>
   <p class="msg" style="margin-top:0">Save a copy of all your history, or restore it on another device.</p>
   <div class="rwbtns"><button id="bkDownload" type="button">Download backup file</button><button id="bkUpload" type="button">Restore from file</button></div>
   <input type="file" id="bkFile" accept=".json,application/json" hidden>
@@ -630,6 +631,7 @@ function render(){
     }else dEl.appendChild(makeItem(x[0],x[1],state.days[view]));
   });
   WEEKLY.forEach(function(x){wEl.appendChild(makeItem(x[0],x[1],state.weeks[ws]));});
+  renderWeekStats(ws);
   setSecTitle("weekTitle","Weekly review, week of "+parse(ws).toLocaleDateString(undefined,{month:"short",day:"numeric"}));
   renderStrip();updateScore();renderGoals();renderJournal();renderWater();renderRewards();renderEx();renderChecklist();renderWeight();renderLimits();renderRisk();renderLock();renderPayout();renderInsights();renderAtmSettings();if(typeof updSecSums==='function')updSecSums();renderProfile();var chTab=document.querySelector('.tab[data-tab="charts"]');if(chTab&&!chTab.hidden){renderInsightsTab();renderCharts();}if(typeof renderNotif==='function')renderNotif();
 }
@@ -814,7 +816,7 @@ document.getElementById('exAdd').addEventListener('click',function(){
   var name=exSel==='Other'?((document.getElementById('exOther').value||'').trim()||'Other'):exSel;
   day.ex.push({type:name,min:exMinVal});save();render();
 });
-var REMIND_OPTS=[['yesterday','Nothing logged yesterday'],['boxes','Daily boxes left'],['water','Water goal'],['trades','Log trades on weekdays'],['reflection','Followed plan and reflection'],['sunday','Sunday weekly review'],['weigh','Weekly weigh-in'],['loss','Daily loss limit'],['lock','Lock accounts']];
+var REMIND_OPTS=[['yesterday','Nothing logged yesterday'],['boxes','Daily boxes left'],['water','Water goal'],['trades','Log trades on weekdays'],['reflection','Followed plan and reflection'],['sunday','Sunday weekly review'],['weigh','Weekly weigh-in'],['loss','Daily loss limit'],['lock','Lock accounts'],['backup','Weekly backup']];
 function ron(k){var o=state.goals.remindOff||{};return !o[k];}
 function renderRemindSet(){
   var box=document.getElementById('remindSet');box.innerHTML='';
@@ -937,6 +939,8 @@ function renderRemind(){
   if(ron('weigh')&&anyHistory&&!weighedThisWeek(t))items.push(['Weekly weigh-in due','Weigh in',go('wtTitle',t)]);
   if(ron('lock')&&!isLocked(t)&&(nt||(j&&j.trades.length)||(ron('loss')&&riskState(t).hit)))items.push([riskState(t).hit?'Limit hit. Lock your accounts now':'Lock your accounts for today','Lock',go('lockCard',t)]);
   if(ron('sunday')&&dow===0){var wk=state.weeks[weekStart(t)]||{};var wl=WEEKLY.filter(function(x){return !wk[x[0]];}).length;if(wl)items.push(['Sunday review: '+wl+(wl===1?' box':' boxes')+' left','Review',go('weekTitle',t)]);}
+  if(ron('backup')&&anyHistory){var lb=null;try{lb=localStorage.getItem('tracker-last-backup');}catch(e){}var bd=lb?Math.round((parse(t)-parse(lb))/864e5):null;
+    if(bd===null||bd>=7)items.push([bd===null?'Back up your data so you never lose it':'Last backup was '+bd+' days ago. Back up your data','Back up',go('bkTitle',t)]);}
   var tbT=document.getElementById('tbToday');if(tbT){tbT.textContent=items.length;tbT.hidden=!items.length;tbT.setAttribute('aria-label',items.length+' reminders');}
   var box=document.getElementById('remindList'),sec=document.getElementById('remind');box.innerHTML='';
   var allOff=REMIND_OPTS.every(function(o){return !ron(o[0]);});
@@ -1346,6 +1350,7 @@ function renderPayout(){
     var ed=document.createElement('div');ed.className='ppedit';
     var sd=document.createElement('div');sd.className='fld';var sl=document.createElement('span');sl.textContent='Stage';sd.appendChild(sl);
     sd.appendChild(seg([['eval','Evaluation'],['funded','Funded'],['closed','Closed']],st,function(v){a.stage=v;save();renderPayout();renderJournal();}));ed.appendChild(sd);
+    var pl=presetLoader(a,i);if(pl)ed.appendChild(pl);
     function f(label,val,ph,mode,type,cb){var d=document.createElement('div');d.className='fld';var sp=document.createElement('span');sp.textContent=label;var inp=document.createElement('input');inp.type=type||'text';if(mode)inp.setAttribute('inputmode',mode);inp.placeholder=ph;inp.value=val==null?'':val;inp.addEventListener('change',function(){cb(inp.value);save();renderPayout();});d.appendChild(sp);d.appendChild(inp);return d;}
     ed.appendChild(f('Account name (match your journal)',a.name,'Midgard 50K','','text',function(v){a.name=v.trim();}));
     var g=document.createElement('div');g.className='g2';
@@ -2282,6 +2287,88 @@ function applyPreset(a,firm,plan,stage,variant,sizeK){
   a.rulesNote=(v.note||'')+(r[8]?' Max size: '+r[8]+'.':'');
   a.preset={firm:firm,plan:plan,stage:stage,variant:variant||'',size:sizeK,asOf:PRESET_ASOF};
   return true;
+}
+
+/* ---------- week in numbers ---------- */
+function renderWeekStats(ws){
+  var box=document.getElementById('weekStats');if(!box)return;box.innerHTML='';
+  var t=today(),days=[];for(var i=0;i<7;i++){var k=addDays(ws,i);if(k<=t)days.push(k);}
+  var tot=0,n=0,yes=0,no=0,byA={},bySet={},chk=0,wat=0,exm=0,exd=0,tdays=0,locks=0;
+  days.forEach(function(k){var j=state.journal[k],d=state.days[k]||{};
+    if(countFor(k)>0)chk++;if((d.water||0)>=waterGoal())wat++;var m=exMin(k);exm+=m;if(m>0)exd++;
+    if(j&&j.trades.length){tdays++;if(j.lock&&j.lock.at)locks++;}
+    if(j)j.trades.forEach(function(x){n++;var p=tradePnl(x);tot+=p;if(x.plan==='yes')yes++;if(x.plan==='no')no++;
+      tradeAccts(x).forEach(function(a){var v=pnlFor(x,a);if(v!==null)byA[a]=(byA[a]||0)+v;});
+      var s=(x.setup||'').trim();if(s){var key=s.toLowerCase();bySet[key]=bySet[key]||{l:s,p:0,n:0};bySet[key].p+=p;bySet[key].n++;}});});
+  function tile(v,l,cls){var d=document.createElement('div');d.className='stat';var b=document.createElement('b');b.textContent=v;if(cls)b.className=cls;var s=document.createElement('span');s.textContent=l;d.appendChild(b);d.appendChild(s);return d;}
+  function row(l,v,cls){var r=document.createElement('div');r.className='pprow';var a=document.createElement('span');a.textContent=l;var b=document.createElement('b');b.textContent=v;if(cls)b.className=cls;r.appendChild(a);r.appendChild(b);return r;}
+  var wrap=document.createElement('div');wrap.className='water';wrap.style.marginBottom='10px';
+  var h=document.createElement('b');h.textContent='Your week in numbers';wrap.appendChild(h);
+  var g=document.createElement('div');g.className='stats';
+  g.appendChild(tile(n?money(tot):'$0','P&L',pnlClass(tot)));
+  g.appendChild(tile(String(n),n===1?'trade':'trades'));
+  g.appendChild(tile(yes+no?Math.round(yes/(yes+no)*100)+'%':'None yet','followed plan'));
+  wrap.appendChild(g);
+  var names=Object.keys(byA);
+  if(names.length){var sh=document.createElement('p');sh.className='ppsub';sh.textContent='By account';wrap.appendChild(sh);names.sort(function(x,y){return byA[y]-byA[x];}).forEach(function(a){wrap.appendChild(row(a,money(byA[a]),pnlClass(byA[a])));});}
+  var sets=Object.keys(bySet).map(function(k){return bySet[k];});
+  if(sets.length){var sh2=document.createElement('p');sh2.className='ppsub';sh2.textContent='Setups';wrap.appendChild(sh2);
+    sets.sort(function(x,y){return y.p-x.p;});var best=sets[0],worst=sets[sets.length-1];
+    if(best.p>0)wrap.appendChild(row('Best: '+best.l+' ('+best.n+')',money(best.p),'pos'));
+    if(worst.p<0)wrap.appendChild(row('Worst: '+worst.l+' ('+worst.n+')',money(worst.p),'neg'));
+    if(best.p<=0&&worst.p>=0)wrap.appendChild(row('All setups','Break even'));}
+  var sh3=document.createElement('p');sh3.className='ppsub';sh3.textContent='Habits';wrap.appendChild(sh3);
+  var dn=days.length||1;
+  wrap.appendChild(row('Days checked in',chk+' of '+dn));
+  wrap.appendChild(row('Water goal hit',wat+' of '+dn+(wat===1?' day':' days')));
+  wrap.appendChild(row('Exercise',exm+' min over '+exd+(exd===1?' day':' days')));
+  if(tdays)wrap.appendChild(row('Locked accounts after trading',locks+' of '+tdays+(tdays===1?' day':' days')));
+  var wi=weighIns(),inWk=wi.filter(function(p){return p[0]>=ws&&p[0]<=addDays(ws,6);}),before=wi.filter(function(p){return p[0]<ws;});
+  if(inWk.length){var last=inWk[inWk.length-1][1],base=before.length?before[before.length-1][1]:(inWk.length>1?inWk[0][1]:null);
+    if(base!==null){var ch=Math.round((last-base)*10)/10;wrap.appendChild(row('Weight',last+' lb ('+(ch>0?'+':ch<0?'−':'')+Math.abs(ch)+' lb)',ch<0?'pos':ch>0?'neg':''));}
+    else wrap.appendChild(row('Weight',last+' lb'));}
+  else wrap.appendChild(row('Weight','No weigh-in yet'));
+  var notes=state.goals.weekNotes&&typeof state.goals.weekNotes==='object'?state.goals.weekNotes:null;
+  var q=document.createElement('div');q.className='fld';q.style.margin='12px 0 0';var ql=document.createElement('span');ql.textContent='The one thing I’ll change next week';q.appendChild(ql);
+  var ta=document.createElement('textarea');ta.maxLength=300;ta.style.minHeight='64px';ta.placeholder='Like: no trades after 11 AM, or walk before the open';ta.value=notes&&typeof notes[ws]==='string'?notes[ws]:'';
+  ta.addEventListener('input',function(){var o=state.goals.weekNotes;if(!o||typeof o!=='object'||Array.isArray(o))o=state.goals.weekNotes={};var v=ta.value.slice(0,300);if(v.trim())o[ws]=v;else delete o[ws];save();});
+  q.appendChild(ta);wrap.appendChild(q);
+  var prevNote=notes&&typeof notes[addDays(ws,-7)]==='string'?notes[addDays(ws,-7)]:'';
+  if(prevNote){var pn=document.createElement('p');pn.className='msg';pn.textContent='Last week you said you’d change: '+prevNote;wrap.appendChild(pn);}
+  box.appendChild(wrap);
+}
+
+/* ---------- load firm rules into an existing account ---------- */
+function presetLoader(a,i){
+  var st=stageOf(a);if(st==='closed')return null;
+  var w=document.createElement('div');w.className='pnew';w.style.cssText='display:block;margin:10px 0';
+  var h=document.createElement('b');h.textContent='Load firm rules';w.appendChild(h);
+  var sub=document.createElement('p');sub.className='msg';sub.style.marginTop='4px';sub.textContent='Fills in this account’s rules from a firm preset. Your trades and history stay the same.';w.appendChild(sub);
+  function lab(t,el){var d=document.createElement('div');d.className='fld';d.style.margin='8px 0 0';var s=document.createElement('span');s.textContent=t;d.appendChild(s);d.appendChild(el);return d;}
+  function sel(opts,cur){var s=document.createElement('select');opts.forEach(function(o){var op=document.createElement('option');op.value=o[0];op.textContent=o[1];if(o[0]===cur)op.selected=true;s.appendChild(op);});return s;}
+  var nm=(a.name||'').toLowerCase(),gf=a.preset&&PRESETS[a.preset.firm]?a.preset.firm:null;
+  if(!gf)Object.keys(PRESETS).forEach(function(f){if(!gf&&(nm.indexOf(f.toLowerCase())===0||(FIRM_FULL[f]&&nm.indexOf(FIRM_FULL[f].toLowerCase())===0)))gf=f;});
+  var sm=/(\d{2,3})\s*k\b/i.exec(a.name||''),gs=a.preset?a.preset.size:(sm?Number(sm[1]):(a.startBal?Math.round(a.startBal/1000):50));
+  var firm=sel(Object.keys(PRESETS).map(function(f){return [f,FIRM_FULL[f]?f+' ('+FIRM_FULL[f]+')':f];}),gf||'Tradeify');w.appendChild(lab('Prop firm',firm));
+  var pw=document.createElement('div'),vw=document.createElement('div'),zw=document.createElement('div');w.appendChild(pw);w.appendChild(vw);w.appendChild(zw);
+  var info=document.createElement('p');info.className='msg';w.appendChild(info);
+  var planS,varS,sizeS;
+  function fp(){pw.innerHTML='';var opts=Object.keys(PRESETS[firm.value].plans).filter(function(k){return presetVariants(firm.value,k,st).length;}).map(function(k){return [k,k];});
+    if(!opts.length){planS=null;vw.innerHTML='';zw.innerHTML='';info.textContent=(firm.value==='Midgard'?'Midgard doesn’t publish funded rules. ':'There’s no '+STAGE_LABEL[st].toLowerCase()+' preset for this firm. ')+'Enter them from your dashboard below.';btn.style.display='none';return;}
+    btn.style.display='';planS=sel(opts,a.preset&&a.preset.firm===firm.value?a.preset.plan:opts[0][0]);planS.addEventListener('change',fv);pw.appendChild(lab('Plan',planS));fv();}
+  function fv(){vw.innerHTML='';varS=null;var vs=presetVariants(firm.value,planS.value,st);
+    if(vs.length>1){varS=sel(vs.map(function(v){return [v[0],v[0]];}),a.preset&&a.preset.variant?a.preset.variant:vs[0][0]);varS.addEventListener('change',fz);vw.appendChild(lab('Funded type',varS));}fz();}
+  function cv(){var vs=presetVariants(firm.value,planS.value,st),k=varS?varS.value:vs[0][0],v=vs[0];vs.forEach(function(x){if(x[0]===k)v=x;});return v;}
+  function fz(){zw.innerHTML='';var v=cv(),opts=v[1].rows.map(function(r){return [String(r[0]),r[0]+'K'];});
+    var cur=opts.some(function(o){return o[0]===String(gs);})?String(gs):opts[0][0];sizeS=sel(opts,cur);sizeS.addEventListener('change',ui);zw.appendChild(lab('Account size',sizeS));ui();}
+  function ui(){btn.textContent='Load these rules';delete btn.dataset.arm;var r=presetRow(cv()[1],Number(sizeS.value));info.textContent=r?describeRow(r):'';}
+  var btn=document.createElement('button');btn.type='button';btn.className='addbtn';btn.style.margin='10px 0 0';
+  btn.addEventListener('click',function(){
+    if(!btn.dataset.arm){btn.dataset.arm='1';btn.textContent='Tap again to replace this account’s rules';return;}
+    var v=cv();if(applyPreset(a,firm.value,planS.value,st,v[0],Number(sizeS.value))){ppEditing={};ppEditing[i]=true;ppMsg='Loaded '+firm.value+' '+planS.value+(v[0]?' ('+v[0]+')':'')+' rules. Check them against your dashboard.';save();renderPayout();renderJournal();}
+  });
+  firm.addEventListener('change',fp);fp();w.appendChild(btn);
+  return w;
 }
 
 var bkPending=null;
