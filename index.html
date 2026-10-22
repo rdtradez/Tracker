@@ -1805,7 +1805,11 @@ function hasPnl(t){return tradeCalc(t).ok;}
 function tradePnl(t){var c=tradeCalc(t);return c.ok?c.pnl:0;}
 function fmtPts(p){var r=Math.round(p*100)/100;return (r>0?'+':r<0?'−':'')+Math.abs(r).toFixed(2)+' pts';}
 function findAtm(t){var l=atms();for(var i=0;i<l.length;i++){if(t.atmId&&l[i].id===t.atmId)return l[i];}for(var k=0;k<l.length;k++){if((l[k].name||'').toLowerCase()===(t.atm||'').toLowerCase())return l[k];}return null;}
-function tickRound(v,inst){var tick=/^(MGC|GC)$/.test(inst)?0.1:/^(MCL|CL)$/.test(inst)?0.01:/^(MYM|YM)$/.test(inst)?1:0.25;var r=Math.round(v/tick)*tick;return String(Math.round(r*100)/100);}
+function tickSize(inst){return /^(MGC|GC)$/.test(inst)?0.1:/^(MCL|CL)$/.test(inst)?0.01:/^(MYM|YM)$/.test(inst)?1:0.25;}
+function atmUnit(a){return a&&a.unit==='ticks'?'ticks':'pts';}
+function atmToPts(a,v){v=num(v);return atmUnit(a)==='ticks'?v*tickSize(a.inst||defInst()):v;}
+function r2(v){return Math.round(v*100)/100;}
+function tickRound(v,inst){var tick=tickSize(inst);var r=Math.round(v/tick)*tick;return String(Math.round(r*100)/100);}
 function tradeBody(t,c,rerender){
   var md=tradeMode(t);
   if(md==='amount'){
@@ -1845,8 +1849,8 @@ function tradeBody(t,c,rerender){
   var hd=document.createElement('div');hd.className='lghd';hd.innerHTML='<span>Contracts</span><span>Exit price</span>';lab.appendChild(hd);
   var legBox=document.createElement('div');legBox.className='legs';lab.appendChild(legBox);c.appendChild(lab);
   var atm=findAtm(t),hintFns=[];
-  function legTarget(i){if(!atm||!atm.targets||!atm.targets[i])return NaN;var e=num(t.entry),sg=t.dir==='long'?1:t.dir==='short'?-1:0;if(isNaN(e)||!sg)return NaN;return e+sg*num(atm.targets[i].pts);}
-  function legStop(){if(!atm)return NaN;var e=num(t.entry),sg=t.dir==='long'?1:t.dir==='short'?-1:0,sp=num(atm.stop);if(isNaN(e)||!sg||!(sp>0))return NaN;return e-sg*sp;}
+  function legTarget(i){if(!atm||!atm.targets||!atm.targets[i])return NaN;var e=num(t.entry),sg=t.dir==='long'?1:t.dir==='short'?-1:0;if(isNaN(e)||!sg)return NaN;return e+sg*atmToPts(atm,atm.targets[i].pts);}
+  function legStop(){if(!atm)return NaN;var e=num(t.entry),sg=t.dir==='long'?1:t.dir==='short'?-1:0,sp=atmToPts(atm,atm.stop);if(isNaN(e)||!sg||!(sp>0))return NaN;return e-sg*sp;}
   t.legs.forEach(function(L,i){
     var row=document.createElement('div');row.className='leg';
     var q=document.createElement('input');q.setAttribute('inputmode','numeric');q.value=L.qty||'';q.placeholder='1';q.maxLength=4;q.setAttribute('aria-label','Contracts for exit '+(i+1));
@@ -1884,7 +1888,7 @@ function tradeBody(t,c,rerender){
     var cc=tradeCalc(t);res.innerHTML='';res.className='tres';
     if(!cc.ok){res.appendChild(document.createTextNode('Fill in direction, entry price, and every exit to calculate this trade.'));return;}
     var b=document.createElement('b');b.textContent=money(cc.pnl);b.className=pnlClass(cc.pnl);res.appendChild(b);
-    res.appendChild(document.createTextNode('  '+cc.qty+(cc.qty===1?' contract, ':' contracts, ')+fmtPts(cc.pts)+' per contract'+(feePer()?', after $'+(feePer()*cc.qty).toFixed(2)+' fees':'')));
+    res.appendChild(document.createTextNode('  '+cc.qty+(cc.qty===1?' contract, ':' contracts, ')+fmtPts(cc.pts)+' ('+Math.round(Math.abs(cc.pts)/tickSize(t.inst||defInst()))+' ticks) per contract'+(feePer()?', after $'+(feePer()*cc.qty).toFixed(2)+' fees':'')));
   }
   upd();
   TU.set(t,function(){upd();refreshHints();});
@@ -1905,26 +1909,30 @@ function renderAtmSettings(){
     function f(label,el){var d=document.createElement('div');d.className='fld';var s=document.createElement('span');s.textContent=label;d.appendChild(s);d.appendChild(el);return d;}
     var nm=document.createElement('input');nm.value=a.name||'';nm.maxLength=30;nm.placeholder='Normal ATR';nm.addEventListener('change',function(){var v=nm.value.trim();if(v){a.name=v;save();renderJournal();}else nm.value=a.name||'';});
     c.appendChild(f('Name',nm));
+    var U=atmUnit(a),UL=U==='ticks'?'ticks':'points';
+    c.appendChild(f('Measure stops and targets in',seg([['pts','Points'],['ticks','Ticks']],U,function(v){if(v===atmUnit(a))return;var ts=tickSize(a.inst||defInst()),k=v==='ticks'?1/ts:ts;
+      if(a.stop!=null&&a.stop!=='')a.stop=r2(num(a.stop)*k);(a.targets||[]).forEach(function(x){if(x.pts!==''&&x.pts!=null)x.pts=r2(num(x.pts)*k);});
+      a.unit=v;state.goals.atmUnit=v;save();renderAtmSettings();renderJournal();})));
     var g=document.createElement('div');g.className='g2';
     var is=document.createElement('select');INSTR.forEach(function(x){var o=document.createElement('option');o.value=x[0];o.textContent=x[0];if((a.inst||defInst())===x[0])o.selected=true;is.appendChild(o);});
     is.addEventListener('change',function(){a.inst=is.value;save();infos();});
-    var st=document.createElement('input');st.setAttribute('inputmode','decimal');st.value=a.stop==null?'':String(a.stop);st.placeholder='15';
+    var st=document.createElement('input');st.setAttribute('inputmode','decimal');st.value=a.stop==null?'':String(a.stop);st.placeholder=U==='ticks'?'60':'15';
     st.addEventListener('change',function(){var v=num(st.value);if(v>0&&v<10000)a.stop=v;else delete a.stop;st.value=a.stop==null?'':String(a.stop);save();infos();renderJournal();});
-    g.appendChild(f('Instrument',is));g.appendChild(f('Stop loss (points)',st));c.appendChild(g);
-    var th=document.createElement('div');th.className='lghd';th.style.gridTemplateColumns='minmax(0,1fr) minmax(0,1fr) 40px';th.innerHTML='<span>Contracts</span><span>Target (points)</span><span></span>';c.appendChild(th);
+    g.appendChild(f('Instrument',is));g.appendChild(f('Stop loss ('+UL+')',st));c.appendChild(g);
+    var th=document.createElement('div');th.className='lghd';th.style.gridTemplateColumns='minmax(0,1fr) minmax(0,1fr) 40px';th.innerHTML='<span>Contracts</span><span>Target ('+UL+')</span><span></span>';c.appendChild(th);
     if(!Array.isArray(a.targets)||!a.targets.length)a.targets=[{qty:1,pts:''}];
     a.targets.forEach(function(tg,k){
       var r=document.createElement('div');r.className='atmt';
       var q=document.createElement('input');q.setAttribute('inputmode','numeric');q.value=tg.qty==null?'':String(tg.qty);q.setAttribute('aria-label','Contracts for target '+(k+1));
       q.addEventListener('change',function(){var v=Math.round(num(q.value));if(v>0&&v<1000)tg.qty=v;q.value=String(tg.qty||1);save();infos();});
-      var p=document.createElement('input');p.setAttribute('inputmode','decimal');p.value=tg.pts==null?'':String(tg.pts);p.placeholder='30';p.setAttribute('aria-label','Target points '+(k+1));
+      var p=document.createElement('input');p.setAttribute('inputmode','decimal');p.value=tg.pts==null?'':String(tg.pts);p.placeholder=U==='ticks'?'120':'30';p.setAttribute('aria-label','Target '+(k+1)+' in '+UL);
       p.addEventListener('change',function(){var v=num(p.value);if(v>0&&v<10000)tg.pts=v;else tg.pts='';p.value=tg.pts===''?'':String(tg.pts);save();infos();});
       var d=document.createElement('button');d.type='button';d.textContent='×';d.setAttribute('aria-label','Remove target '+(k+1));
       d.addEventListener('click',function(){if(a.targets.length<=1)return;a.targets.splice(k,1);save();renderAtmSettings();});
       r.appendChild(q);r.appendChild(p);r.appendChild(d);c.appendChild(r);
     });
     var info=document.createElement('p');info.className='msg';c.appendChild(info);
-    infoFns.push(function(){var tot=a.targets.reduce(function(n,x){return n+(Number(x.qty)||0);},0);info.textContent=tot+(tot===1?' contract total.':' contracts total.')+(a.stop?' Risk at the stop: $'+(tot*Number(a.stop)*ptValue(a.inst||defInst())).toLocaleString()+'.':'');});
+    infoFns.push(function(){var tot=a.targets.reduce(function(n,x){return n+(Number(x.qty)||0);},0);info.textContent=tot+(tot===1?' contract total.':' contracts total.')+(a.stop?' Stop is '+r2(atmToPts(a,a.stop))+' points ('+Math.round(atmToPts(a,a.stop)/tickSize(a.inst||defInst()))+' ticks). Risk at the stop: $'+r2(tot*atmToPts(a,a.stop)*ptValue(a.inst||defInst())).toLocaleString()+'.':'');});
     var bb=document.createElement('div');bb.className='rwbtns';
     var at=document.createElement('button');at.type='button';at.textContent='Add target';at.addEventListener('click',function(){if(a.targets.length>=10)return;a.targets.push({qty:1,pts:''});save();renderAtmSettings();});
     var rm=document.createElement('button');rm.type='button';rm.textContent='Delete template';
@@ -1935,7 +1943,7 @@ function renderAtmSettings(){
   infos();
 }
 document.getElementById('atmAdd').addEventListener('click',function(){var l=atms();if(l.length>=20)return;var rb=new Uint8Array(6);crypto.getRandomValues(rb);
-  l.push({id:'a'+Array.prototype.map.call(rb,function(x){return ('0'+x.toString(16)).slice(-2);}).join(''),name:'ATM '+(l.length+1),inst:defInst(),stop:'',targets:[{qty:1,pts:''}]});save();renderAtmSettings();});
+  l.push({id:'a'+Array.prototype.map.call(rb,function(x){return ('0'+x.toString(16)).slice(-2);}).join(''),name:'ATM '+(l.length+1),inst:defInst(),unit:state.goals.atmUnit==='ticks'?'ticks':'pts',stop:'',targets:[{qty:1,pts:''}]});save();renderAtmSettings();});
 
 /* ---------- collapsible sections ---------- */
 var SEC_KEY='de-secs',secState={};try{secState=JSON.parse(localStorage.getItem(SEC_KEY)||'{}')||{};}catch(e){secState={};}
